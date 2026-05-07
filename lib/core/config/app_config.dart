@@ -29,13 +29,11 @@ class AppConfig {
     };
   }
 
-  static String get buildModeLabel {
-    if (const bool.fromEnvironment('dart.vm.product')) {
-      return 'Release';
-    }
-    if (const bool.fromEnvironment('dart.vm.profile')) {
-      return 'Profile';
-    }
-    return 'Debug';
-  }
+  static const _isRelease = bool.fromEnvironment('dart.vm.product');
+  static const _isProfile = bool.fromEnvironment('dart.vm.profile');
+  static const buildModeLabel = _isRelease
+      ? 'Release'
+      : _isProfile
+      ? 'Profile'
+      : 'Debug';
 }

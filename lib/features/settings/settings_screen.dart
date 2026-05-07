@@ -338,15 +338,26 @@ class _AppInfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: const Padding(
-        padding: EdgeInsets.all(16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+          children: const [
             _SettingsRow(label: 'App name', value: AppConfig.appName),
             Divider(height: 22),
             _SettingsRow(label: 'Version', value: AppConfig.appVersionLabel),
             Divider(height: 22),
+            _SettingsRow(label: 'Build mode', value: AppConfig.buildModeLabel),
+            Divider(height: 22),
+            Text(
+              AppConfig.paperTradingDisclaimer,
+              style: TextStyle(fontWeight: FontWeight.w900),
+            ),
+            SizedBox(height: 6),
+            Text(
+              AppConfig.simulatedPricesDisclaimer,
+              style: TextStyle(color: Colors.white60),
+            ),
           ],
         ),
       ),
