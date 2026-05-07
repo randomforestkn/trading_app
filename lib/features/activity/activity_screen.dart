@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../core/data/mock_market_data.dart';
+import '../../app/theme/app_theme.dart';
+import '../../core/data/paper_trading_state.dart';
+import '../../core/models/paper_order.dart';
 import '../../core/widgets/app_page.dart';
 
 class ActivityScreen extends StatelessWidget {
@@ -10,49 +12,159 @@ class ActivityScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tradingState = PaperTradingScope.of(context);
+    final orders = tradingState.orders;
+
     return AppPage(
       title: 'Activity',
       subtitle: 'Recent paper transactions and orders',
       children: [
-        ...MockMarketData.activity.map(
-          (item) => Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Card(
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                leading: CircleAvatar(
-                  backgroundColor: Theme.of(
-                    context,
-                  ).colorScheme.primary.withValues(alpha: 0.14),
-                  child: const Icon(Icons.receipt_long_outlined),
-                ),
-                title: Text(
-                  item.title,
-                  style: const TextStyle(fontWeight: FontWeight.w900),
-                ),
-                subtitle: Text(item.subtitle),
-                trailing: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      item.amount,
-                      style: const TextStyle(fontWeight: FontWeight.w900),
+        if (orders.isEmpty)
+          const Card(
+            child: Padding(
+              padding: EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.receipt_long_outlined, color: Colors.white60),
+                  SizedBox(height: 10),
+                  Text(
+                    'No paper orders yet',
+                    style: TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Executed paper trades will appear here after confirmation.',
+                    style: TextStyle(color: Colors.white60),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          ...orders.map(
+            (order) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Card(
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  leading: CircleAvatar(
+                    backgroundColor:
+                        (order.side == PaperOrderSide.buy
+                                ? AppTheme.primary
+                                : AppTheme.danger)
+                            .withValues(alpha: 0.14),
+                    child: Icon(
+                      order.side == PaperOrderSide.buy
+                          ? Icons.add_chart
+                          : Icons.remove_circle_outline,
+                      color: order.side == PaperOrderSide.buy
+                          ? AppTheme.primary
+                          : AppTheme.danger,
                     ),
-                    Text(
-                      item.status,
-                      style: const TextStyle(color: Colors.white60),
+                  ),
+                  title: Row(
+                    children: [
+                      _SideLabel(side: order.side),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '${order.quantity.toStringAsFixed(4)} ${order.assetSymbol}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                    ],
+                  ),
+                  subtitle: Text(
+                    '${order.assetName} • ${_formatTimestamp(order.timestamp)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: SizedBox(
+                    width: 92,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '\$${order.estimatedTotal.toStringAsFixed(2)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                        Text(
+                          order.status.label,
+                          style: const TextStyle(color: Colors.white60),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
       ],
+    );
+  }
+
+  String _formatTimestamp(DateTime timestamp) {
+    final month = _monthName(timestamp.month);
+    final hour = timestamp.hour.toString().padLeft(2, '0');
+    final minute = timestamp.minute.toString().padLeft(2, '0');
+    return '$month ${timestamp.day}, ${timestamp.year} at $hour:$minute';
+  }
+
+  String _monthName(int month) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return months[month - 1];
+  }
+}
+
+class _SideLabel extends StatelessWidget {
+  const _SideLabel({required this.side});
+
+  final PaperOrderSide side;
+
+  @override
+  Widget build(BuildContext context) {
+    final isBuy = side == PaperOrderSide.buy;
+    final color = isBuy ? AppTheme.primary : AppTheme.danger;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.45)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Text(
+          side.label,
+          style: TextStyle(
+            color: color,
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
     );
   }
 }

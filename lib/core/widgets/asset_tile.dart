@@ -5,9 +5,10 @@ import 'change_text.dart';
 import 'mini_trend_chart.dart';
 
 class AssetTile extends StatelessWidget {
-  const AssetTile({required this.asset, this.onTap, super.key});
+  const AssetTile({required this.asset, this.history, this.onTap, super.key});
 
   final TradingAsset asset;
+  final List<double>? history;
   final VoidCallback? onTap;
 
   @override
@@ -49,7 +50,7 @@ class AssetTile extends StatelessWidget {
                 child: Opacity(
                   opacity: 0.72,
                   child: MiniTrendChart(
-                    points: asset.trend,
+                    points: history ?? asset.trend,
                     isPositive: asset.dailyChangePercent >= 0,
                     width: 50,
                   ),

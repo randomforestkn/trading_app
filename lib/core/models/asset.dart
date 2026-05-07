@@ -44,6 +44,31 @@ class TradingAsset {
   final String explanation;
   final Map<String, String> stats;
 
+  TradingAsset copyWith({
+    double? price,
+    double? dailyChangePercent,
+    double? open,
+    double? high,
+    double? low,
+    List<double>? trend,
+  }) {
+    return TradingAsset(
+      symbol: symbol,
+      name: name,
+      type: type,
+      price: price ?? this.price,
+      dailyChangePercent: dailyChangePercent ?? this.dailyChangePercent,
+      open: open ?? this.open,
+      high: high ?? this.high,
+      low: low ?? this.low,
+      volume: volume,
+      marketCap: marketCap,
+      trend: trend ?? this.trend,
+      explanation: explanation,
+      stats: stats,
+    );
+  }
+
   Map<String, String> get tradingStats => {
     'Open': '\$${open.toStringAsFixed(open > 1000 ? 0 : 2)}',
     'High': '\$${high.toStringAsFixed(high > 1000 ? 0 : 2)}',

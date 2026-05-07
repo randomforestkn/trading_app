@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../core/data/mock_market_data.dart';
+import '../../core/config/app_config.dart';
+import '../../core/data/market_state.dart';
 import '../../core/models/asset.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/asset_tile.dart';
@@ -17,9 +18,9 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
   final TextEditingController _searchController = TextEditingController();
   AssetType? _selectedType;
 
-  List<TradingAsset> get _filteredAssets {
+  List<TradingAsset> _filteredAssets(MarketState marketState) {
     final query = _searchController.text.trim().toLowerCase();
-    return MockMarketData.assets.where((asset) {
+    return marketState.assets.where((asset) {
       final matchesQuery =
           query.isEmpty ||
           asset.symbol.toLowerCase().contains(query) ||
@@ -47,12 +48,56 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final filteredAssets = _filteredAssets;
+    final marketState = MarketScope.of(context);
+    final filteredAssets = _filteredAssets(marketState);
 
     return AppPage(
       title: 'Watchlist',
       subtitle: 'Search and filter mock markets',
+      actions: [
+        IconButton(
+          tooltip: 'Refresh prices',
+          onPressed: marketState.isLoading
+              ? null
+              : () => _refreshPrices(context, marketState),
+          icon: const Icon(Icons.refresh),
+        ),
+      ],
       children: [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    marketState.lastRefreshAt == null
+                        ? '${AppConfig.paperTradingDisclaimer} Not refreshed yet.'
+                        : '${AppConfig.paperTradingDisclaimer} Updated ${_formatTimestamp(marketState.lastRefreshAt!)}.',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        if (marketState.errorMessage != null) ...[
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Text(
+                marketState.errorMessage!,
+                style: const TextStyle(
+                  color: Colors.redAccent,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+        ],
         TextField(
           controller: _searchController,
           decoration: InputDecoration(
@@ -107,6 +152,7 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
               padding: const EdgeInsets.only(bottom: 10),
               child: AssetTile(
                 asset: asset,
+                history: marketState.historyFor(asset.symbol),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => AssetDetailScreen(asset: asset),
@@ -116,6 +162,30 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
             ),
           ),
       ],
+    );
+  }
+
+  String _formatTimestamp(DateTime timestamp) {
+    final hour = timestamp.hour.toString().padLeft(2, '0');
+    final minute = timestamp.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  Future<void> _refreshPrices(
+    BuildContext context,
+    MarketState marketState,
+  ) async {
+    final result = await marketState.refreshPrices();
+    if (!context.mounted) {
+      return;
+    }
+    result.when(
+      success: (_) {},
+      failure: (message) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+      },
     );
   }
 }

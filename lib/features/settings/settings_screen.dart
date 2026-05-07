@@ -1,0 +1,383 @@
+import 'package:flutter/material.dart';
+
+import '../../app/theme/app_theme.dart';
+import '../../core/config/app_config.dart';
+import '../../core/data/auth_state.dart';
+import '../../core/data/market_state.dart';
+import '../../core/data/paper_trading_state.dart';
+import '../../core/widgets/app_page.dart';
+import '../../core/widgets/section_header.dart';
+
+class SettingsScreen extends StatelessWidget {
+  const SettingsScreen({super.key});
+
+  static const routeName = '/settings';
+
+  @override
+  Widget build(BuildContext context) {
+    final paperState = PaperTradingScope.of(context);
+    final marketState = MarketScope.of(context);
+    final authState = AuthScope.of(context);
+
+    return AppPage(
+      title: 'Settings',
+      subtitle: 'Paper account and app controls',
+      children: [
+        const SectionHeader('Account'),
+        _AccountCard(authState: authState),
+        const SectionHeader('Paper account'),
+        _PaperAccountCard(paperState: paperState, marketState: marketState),
+        const SectionHeader('Account controls'),
+        _SettingsActionCard(
+          icon: Icons.restart_alt,
+          iconColor: AppTheme.danger,
+          title: 'Reset paper portfolio',
+          subtitle:
+              'Restore default mock cash, positions, and clear order history.',
+          actionLabel: 'Reset',
+          destructive: true,
+          onPressed: () => _confirmReset(context, paperState),
+        ),
+        const SizedBox(height: 10),
+        _SettingsActionCard(
+          icon: Icons.history_toggle_off,
+          iconColor: AppTheme.warning,
+          title: 'Clear order history',
+          subtitle:
+              'Remove activity records without changing cash or positions.',
+          actionLabel: 'Clear',
+          onPressed: () => _confirmClearHistory(context, paperState),
+        ),
+        const SectionHeader('App information'),
+        const _AppInfoCard(),
+      ],
+    );
+  }
+
+  Future<void> _confirmReset(
+    BuildContext context,
+    PaperTradingState paperState,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reset paper portfolio?'),
+        content: const Text(
+          'This restores the default mock account, including cash and starting positions, and clears order history. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.danger,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Reset portfolio'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+    await paperState.reset();
+    if (!context.mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Paper portfolio reset.')));
+  }
+
+  Future<void> _confirmClearHistory(
+    BuildContext context,
+    PaperTradingState paperState,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear order history?'),
+        content: const Text(
+          'This removes activity records only. Cash balance and open positions will stay unchanged.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Clear history'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+    await paperState.clearOrderHistory();
+    if (!context.mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Order history cleared.')));
+  }
+}
+
+class _AccountCard extends StatelessWidget {
+  const _AccountCard({required this.authState});
+
+  final AuthState authState;
+
+  @override
+  Widget build(BuildContext context) {
+    final user = authState.currentUser;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (user == null) ...[
+              const Text(
+                'Signed out',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Paper trading remains available in demo mode.',
+                style: TextStyle(color: Colors.white60),
+              ),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: authState.isLoading
+                    ? null
+                    : () => _signInDemo(context, authState),
+                icon: const Icon(Icons.person_add_alt_1),
+                label: const Text('Sign in demo account'),
+              ),
+            ] else ...[
+              _SettingsRow(label: 'Name', value: user.displayName),
+              const Divider(height: 22),
+              _SettingsRow(label: 'Email', value: user.email),
+              const Divider(height: 22),
+              _SettingsRow(label: 'User ID', value: user.id),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: authState.isLoading
+                    ? null
+                    : () => _signOut(context, authState),
+                icon: const Icon(Icons.logout),
+                label: const Text('Sign out'),
+              ),
+            ],
+            const SizedBox(height: 12),
+            const Text(
+              AppConfig.demoAuthDisclaimer,
+              style: TextStyle(color: Colors.white60),
+            ),
+            if (authState.errorMessage != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                authState.errorMessage!,
+                style: const TextStyle(
+                  color: AppTheme.danger,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _signInDemo(BuildContext context, AuthState authState) async {
+    await authState.signInDemo();
+    if (!context.mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Signed in to demo account.')));
+  }
+
+  Future<void> _signOut(BuildContext context, AuthState authState) async {
+    await authState.signOut();
+    if (!context.mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Signed out of demo account.')),
+    );
+  }
+}
+
+class _PaperAccountCard extends StatelessWidget {
+  const _PaperAccountCard({
+    required this.paperState,
+    required this.marketState,
+  });
+
+  final PaperTradingState paperState;
+  final MarketState marketState;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            _SettingsRow(
+              label: 'Starting cash',
+              value:
+                  '\$${PaperTradingState.defaultCashBalance.toStringAsFixed(2)}',
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Current cash',
+              value: '\$${paperState.cashBalance.toStringAsFixed(2)}',
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Portfolio value',
+              value:
+                  '\$${paperState.totalPortfolioValueFor(marketState).toStringAsFixed(2)}',
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Open positions',
+              value: paperState.positions.length.toString(),
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Market data',
+              value: marketState.dataMode.label,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingsActionCard extends StatelessWidget {
+  const _SettingsActionCard({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    required this.actionLabel,
+    required this.onPressed,
+    this.destructive = false,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final String actionLabel;
+  final VoidCallback onPressed;
+  final bool destructive;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: iconColor.withValues(alpha: 0.12),
+              child: Icon(icon, color: iconColor),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(subtitle, style: const TextStyle(color: Colors.white60)),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            FilledButton(
+              style: destructive
+                  ? FilledButton.styleFrom(
+                      backgroundColor: AppTheme.danger,
+                      foregroundColor: Colors.white,
+                    )
+                  : null,
+              onPressed: onPressed,
+              child: Text(actionLabel),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AppInfoCard extends StatelessWidget {
+  const _AppInfoCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: const Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SettingsRow(label: 'App name', value: AppConfig.appName),
+            Divider(height: 22),
+            _SettingsRow(label: 'Version', value: AppConfig.appVersionLabel),
+            Divider(height: 22),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingsRow extends StatelessWidget {
+  const _SettingsRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(label, style: const TextStyle(color: Colors.white60)),
+        ),
+        const SizedBox(width: 12),
+        Flexible(
+          child: Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.end,
+            style: const TextStyle(fontWeight: FontWeight.w900),
+          ),
+        ),
+      ],
+    );
+  }
+}

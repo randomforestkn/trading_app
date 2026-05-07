@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../app/theme/app_theme.dart';
+import '../../core/data/market_state.dart';
 import '../../core/models/asset.dart';
+import '../../core/models/paper_order.dart';
 import '../../core/widgets/change_text.dart';
 import '../../core/widgets/mini_trend_chart.dart';
 import '../../core/widgets/section_header.dart';
@@ -15,8 +17,10 @@ class AssetDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final currentAsset = MarketScope.of(context).latestFor(asset);
+
     return Scaffold(
-      appBar: AppBar(title: Text(asset.symbol)),
+      appBar: AppBar(title: Text(currentAsset.symbol)),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
@@ -27,21 +31,22 @@ class AssetDetailScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _Header(asset: asset),
+                    _Header(asset: currentAsset),
                     const SectionHeader('Price chart'),
-                    _ChartPlaceholder(asset: asset),
+                    _LivePriceChart(asset: currentAsset),
                     const SectionHeader('Plain English'),
-                    _ExplanationCard(asset: asset),
+                    _ExplanationCard(asset: currentAsset),
                     const SectionHeader('Key stats'),
-                    StatGrid(stats: asset.tradingStats),
+                    StatGrid(stats: currentAsset.tradingStats),
                     const SizedBox(height: 10),
-                    StatGrid(stats: asset.stats),
+                    StatGrid(stats: currentAsset.stats),
                     const SizedBox(height: 22),
                     Row(
                       children: [
                         Expanded(
                           child: FilledButton.icon(
-                            onPressed: () => _openTrade(context, OrderSide.buy),
+                            onPressed: () =>
+                                _openTrade(context, PaperOrderSide.buy),
                             icon: const Icon(Icons.add_chart),
                             label: const Text('Buy'),
                           ),
@@ -54,7 +59,7 @@ class AssetDetailScreen extends StatelessWidget {
                               foregroundColor: Colors.white,
                             ),
                             onPressed: () =>
-                                _openTrade(context, OrderSide.sell),
+                                _openTrade(context, PaperOrderSide.sell),
                             icon: const Icon(Icons.remove_circle_outline),
                             label: const Text('Sell'),
                           ),
@@ -71,10 +76,11 @@ class AssetDetailScreen extends StatelessWidget {
     );
   }
 
-  void _openTrade(BuildContext context, OrderSide side) {
+  void _openTrade(BuildContext context, PaperOrderSide side) {
+    final currentAsset = MarketScope.of(context).latestFor(asset);
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => TradeScreen(asset: asset, initialSide: side),
+        builder: (_) => TradeScreen(asset: currentAsset, initialSide: side),
       ),
     );
   }
@@ -146,59 +152,92 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _ChartPlaceholder extends StatelessWidget {
-  const _ChartPlaceholder({required this.asset});
+class _LivePriceChart extends StatefulWidget {
+  const _LivePriceChart({required this.asset});
 
   final TradingAsset asset;
 
   @override
+  State<_LivePriceChart> createState() => _LivePriceChartState();
+}
+
+class _LivePriceChartState extends State<_LivePriceChart> {
+  String _timeframe = '1D';
+
+  @override
   Widget build(BuildContext context) {
+    final marketState = MarketScope.of(context);
+    final asset = marketState.latestFor(widget.asset);
+    final points = marketState.timeframeHistoryFor(asset.symbol, _timeframe);
+    final first = points.isEmpty ? asset.price : points.first;
+    final latest = points.isEmpty ? asset.price : points.last;
+    final priceChange = latest - first;
+    final percentChange = first == 0 ? 0.0 : (priceChange / first) * 100;
+    final isPositive = priceChange >= 0;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: SizedBox(
-          height: 236,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Text(
-                    'Mock 1D price movement',
-                    style: TextStyle(color: Colors.white60),
-                  ),
-                  const Spacer(),
-                  SegmentedButton<String>(
-                    showSelectedIcon: false,
-                    segments: const [
-                      ButtonSegment(value: '1D', label: Text('1D')),
-                      ButtonSegment(value: '1W', label: Text('1W')),
-                      ButtonSegment(value: '1M', label: Text('1M')),
-                    ],
-                    selected: const {'1D'},
-                    onSelectionChanged: (_) {},
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Expanded(
-                child: CustomPaint(
-                  painter: _ChartPainter(
-                    points: asset.trend,
-                    isPositive: asset.dailyChangePercent >= 0,
-                  ),
-                  child: Align(
-                    alignment: Alignment.bottomRight,
-                    child: MiniTrendChart(
-                      points: asset.trend,
-                      isPositive: asset.dailyChangePercent >= 0,
-                      height: 44,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Live simulated price history',
+                      style: TextStyle(color: Colors.white60),
                     ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '\$${latest.toStringAsFixed(latest > 1000 ? 0 : 2)}',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    Text(
+                      '${priceChange >= 0 ? '+' : ''}\$${priceChange.toStringAsFixed(2)} (${percentChange >= 0 ? '+' : ''}${percentChange.toStringAsFixed(2)}%)',
+                      style: TextStyle(
+                        color: isPositive ? AppTheme.primary : AppTheme.danger,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+                SegmentedButton<String>(
+                  showSelectedIcon: false,
+                  segments: const [
+                    ButtonSegment(value: '1D', label: Text('1D')),
+                    ButtonSegment(value: '1W', label: Text('1W')),
+                    ButtonSegment(value: '1M', label: Text('1M')),
+                  ],
+                  selected: {_timeframe},
+                  onSelectionChanged: (value) {
+                    setState(() => _timeframe = value.first);
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 260,
+              child: CustomPaint(
+                painter: _ChartPainter(points: points, isPositive: isPositive),
+                child: Align(
+                  alignment: Alignment.bottomRight,
+                  child: MiniTrendChart(
+                    points: points,
+                    isPositive: isPositive,
+                    height: 44,
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

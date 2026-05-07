@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../app/theme/app_theme.dart';
-import '../../core/data/mock_market_data.dart';
+import '../../core/data/market_state.dart';
+import '../../core/data/paper_trading_state.dart';
+import '../../core/models/asset.dart';
 import '../../core/models/portfolio_position.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/change_text.dart';
@@ -11,20 +13,11 @@ import '../activity/activity_screen.dart';
 class PortfolioScreen extends StatelessWidget {
   const PortfolioScreen({super.key});
 
-  static const double cashBalance = 18420.55;
-
   @override
   Widget build(BuildContext context) {
-    final positions = MockMarketData.positions;
-    final positionsValue = positions.fold<double>(
-      0,
-      (total, position) => total + position.marketValue,
-    );
-    final unrealized = positions.fold<double>(
-      0,
-      (total, position) => total + position.unrealizedProfitLoss,
-    );
-    final portfolioValue = cashBalance + positionsValue;
+    final tradingState = PaperTradingScope.of(context);
+    final marketState = MarketScope.of(context);
+    final positions = tradingState.positionsFor(marketState);
 
     return AppPage(
       title: 'Portfolio',
@@ -36,45 +29,148 @@ class PortfolioScreen extends StatelessWidget {
               Navigator.of(context).pushNamed(ActivityScreen.routeName),
           icon: const Icon(Icons.history),
         ),
+        IconButton(
+          tooltip: 'Reset paper portfolio',
+          onPressed: () => _confirmReset(context, tradingState),
+          style: IconButton.styleFrom(
+            foregroundColor: AppTheme.danger,
+            backgroundColor: AppTheme.danger.withValues(alpha: 0.10),
+          ),
+          icon: const Icon(Icons.restart_alt),
+        ),
       ],
       children: [
         _PortfolioSummary(
-          portfolioValue: portfolioValue,
-          cashBalance: cashBalance,
-          unrealized: unrealized,
+          portfolioValue: tradingState.totalPortfolioValueFor(marketState),
+          cashBalance: tradingState.cashBalance,
+          unrealized: tradingState.unrealizedProfitLossFor(marketState),
+          lastUpdated: tradingState.lastUpdated,
         ),
         const SectionHeader('Open positions'),
-        ...positions.map(
-          (position) => Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: _PositionTile(position: position),
+        if (positions.isEmpty)
+          const Card(
+            child: Padding(
+              padding: EdgeInsets.all(18),
+              child: Text(
+                'No open positions yet. Place a paper trade to begin.',
+              ),
+            ),
+          )
+        else
+          ...positions.map(
+            (position) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _PositionTile(position: position),
+            ),
           ),
-        ),
         const SectionHeader('Asset allocation'),
         Wrap(
           spacing: 10,
           runSpacing: 10,
-          children: const [
-            _AllocationCard(
-              label: 'Stocks',
-              value: '35%',
-              color: AppTheme.primary,
-            ),
-            _AllocationCard(
-              label: 'ETFs',
-              value: '28%',
-              color: AppTheme.secondary,
-            ),
-            _AllocationCard(
-              label: 'Crypto',
-              value: '22%',
-              color: AppTheme.warning,
-            ),
-            _AllocationCard(label: 'Cash', value: '15%', color: Colors.white70),
-          ],
+          children: _allocationCards(tradingState, marketState),
         ),
       ],
     );
+  }
+
+  Future<void> _confirmReset(
+    BuildContext context,
+    PaperTradingState tradingState,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Reset paper portfolio?'),
+          content: const Text(
+            'This will clear persisted order history and restore the default mock cash balance and starting positions. This cannot be undone.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppTheme.danger,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Reset portfolio'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    await tradingState.reset();
+    if (!context.mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        behavior: SnackBarBehavior.floating,
+        content: Text('Paper portfolio reset.'),
+      ),
+    );
+  }
+
+  List<Widget> _allocationCards(
+    PaperTradingState tradingState,
+    MarketState marketState,
+  ) {
+    final total = tradingState.totalPortfolioValueFor(marketState);
+    final positions = tradingState.positionsFor(marketState);
+    final stockValue = positions
+        .where((position) => position.asset.type == AssetType.stock)
+        .fold<double>(0, (total, position) => total + position.marketValue);
+    final etfValue = positions
+        .where((position) => position.asset.type == AssetType.etf)
+        .fold<double>(0, (total, position) => total + position.marketValue);
+    final cryptoValue = positions
+        .where((position) => position.asset.type == AssetType.crypto)
+        .fold<double>(0, (total, position) => total + position.marketValue);
+    final otherValue =
+        tradingState.positionsValueFor(marketState) -
+        stockValue -
+        etfValue -
+        cryptoValue;
+
+    String percentage(double value) =>
+        total == 0 ? '0%' : '${((value / total) * 100).round()}%';
+
+    return [
+      _AllocationCard(
+        label: 'Stocks',
+        value: percentage(stockValue),
+        color: AppTheme.primary,
+      ),
+      _AllocationCard(
+        label: 'ETFs',
+        value: percentage(etfValue),
+        color: AppTheme.secondary,
+      ),
+      _AllocationCard(
+        label: 'Crypto',
+        value: percentage(cryptoValue),
+        color: AppTheme.warning,
+      ),
+      _AllocationCard(
+        label: 'Other',
+        value: percentage(otherValue),
+        color: const Color(0xFFBCA8FF),
+      ),
+      _AllocationCard(
+        label: 'Cash',
+        value: percentage(tradingState.cashBalance),
+        color: Colors.white70,
+      ),
+    ];
   }
 }
 
@@ -83,11 +179,13 @@ class _PortfolioSummary extends StatelessWidget {
     required this.portfolioValue,
     required this.cashBalance,
     required this.unrealized,
+    required this.lastUpdated,
   });
 
   final double portfolioValue;
   final double cashBalance;
   final double unrealized;
+  final DateTime? lastUpdated;
 
   @override
   Widget build(BuildContext context) {
@@ -105,6 +203,13 @@ class _PortfolioSummary extends StatelessWidget {
             Text(
               '\$${portfolioValue.toStringAsFixed(2)}',
               style: Theme.of(context).textTheme.headlineMedium,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              lastUpdated == null
+                  ? 'Default mock portfolio'
+                  : 'Last updated ${_formatTimestamp(lastUpdated!)}',
+              style: const TextStyle(color: Colors.white60),
             ),
             const SizedBox(height: 18),
             Row(
@@ -129,6 +234,31 @@ class _PortfolioSummary extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _formatTimestamp(DateTime timestamp) {
+    final month = _monthName(timestamp.month);
+    final hour = timestamp.hour.toString().padLeft(2, '0');
+    final minute = timestamp.minute.toString().padLeft(2, '0');
+    return '$month ${timestamp.day}, ${timestamp.year} at $hour:$minute';
+  }
+
+  String _monthName(int month) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return months[month - 1];
   }
 }
 
