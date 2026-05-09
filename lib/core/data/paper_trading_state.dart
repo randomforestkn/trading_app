@@ -341,6 +341,52 @@ class PaperTradingState extends ChangeNotifier {
     }
   }
 
+  Future<AppResult<void>> restoreFromAccount(
+    PaperTradingAccount account, {
+    bool enqueueSync = true,
+  }) async {
+    _setSaving(true);
+    _applyAccount(account);
+    late final AppResult<void> result;
+    try {
+      result = await _repository.saveAccount(account);
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'Paper account restore from snapshot threw unexpectedly',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      _lastError = 'Unable to restore paper trading account.';
+      _setSaving(false);
+      notifyListeners();
+      return const AppFailure('Unable to restore paper trading account.');
+    }
+    result.when(
+      success: (_) {
+        _lastError = null;
+      },
+      failure: (message) {
+        AppLogger.warn(
+          'Paper account restore from snapshot failed',
+          error: message,
+        );
+        _lastError = message;
+      },
+    );
+    _setSaving(false);
+    notifyListeners();
+    if (_lastError == null && enqueueSync) {
+      await _enqueueSyncOperation(
+        operationType: SyncOperationType.reset,
+        entityId: 'paper-account',
+        payload: paperTradingSnapshot(_toAccount()),
+      );
+    }
+    return _lastError == null
+        ? const AppSuccess(null)
+        : AppFailure(_lastError!);
+  }
+
   String toJsonString() => _toAccount().toJsonString();
 
   Map<String, Object?> toJson() => _toAccount().toJson();

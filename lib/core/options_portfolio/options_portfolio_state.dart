@@ -399,6 +399,52 @@ class OptionsPortfolioState extends ChangeNotifier {
     }
   }
 
+  Future<AppResult<void>> replaceAccount(
+    OptionsPortfolioAccount account, {
+    bool enqueueSync = true,
+  }) async {
+    _setSaving(true);
+    _applyAccount(account);
+    late final AppResult<void> result;
+    try {
+      result = await _repository.saveAccount(_toAccount());
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'Options portfolio restore from snapshot threw unexpectedly',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      _errorMessage = 'Unable to restore options portfolio.';
+      _setSaving(false);
+      notifyListeners();
+      return const AppFailure('Unable to restore options portfolio.');
+    }
+    result.when(
+      success: (_) {
+        _errorMessage = null;
+      },
+      failure: (message) {
+        AppLogger.warn(
+          'Options portfolio restore from snapshot failed',
+          error: message,
+        );
+        _errorMessage = message;
+      },
+    );
+    _setSaving(false);
+    notifyListeners();
+    if (_errorMessage == null && enqueueSync) {
+      await _enqueueSyncOperation(
+        operationType: SyncOperationType.reset,
+        entityId: 'options-portfolio',
+        payload: optionsPortfolioSnapshot(_toAccount()),
+      );
+    }
+    return _errorMessage == null
+        ? const AppSuccess(null)
+        : AppFailure(_errorMessage!);
+  }
+
   Map<String, Object?> toJson() => _toAccount().toJson();
 
   void _applyAccount(OptionsPortfolioAccount account) {

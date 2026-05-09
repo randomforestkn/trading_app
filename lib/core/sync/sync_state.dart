@@ -80,6 +80,26 @@ class SyncState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> restoreMetadata(SyncMetadata metadata) async {
+    _metadata = metadata.copyWith(
+      pendingOperationsCount: _pendingOperations
+          .where((operation) => operation.status != SyncOperationStatus.synced)
+          .length,
+    );
+    try {
+      await _repository.saveMetadata(_metadata);
+      _errorMessage = null;
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'Sync metadata restore threw unexpectedly',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      _errorMessage = 'Unable to restore sync metadata.';
+    }
+    notifyListeners();
+  }
+
   Future<void> enqueueOperation(SyncOperation operation) async {
     try {
       final result = await _repository.enqueueOperation(operation);

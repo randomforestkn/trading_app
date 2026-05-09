@@ -33,6 +33,9 @@ class AppConfig {
       'Exports stay local unless you manually share the generated file.';
   static const exportReportDisclaimer =
       'Reports are generated from local paper trading, journal, and options data.';
+  static const importRestoreDisclaimer =
+      'Restores replace local data on this device. Keep a backup before applying changes.';
+  static const backupFormatVersion = 1;
   static const demoUserId = 'demo-user';
   static const demoUserEmail = 'demo@cleartrade.local';
   static const demoUserDisplayName = 'Demo Trader';

@@ -228,6 +228,52 @@ class JournalState extends ChangeNotifier {
     }
   }
 
+  Future<AppResult<void>> replaceEntries(
+    List<JournalEntry> entries, {
+    bool enqueueSync = true,
+  }) async {
+    _setSaving(true);
+    _entries
+      ..clear()
+      ..addAll(entries);
+    _sortEntries();
+    late final AppResult<void> result;
+    try {
+      result = await _repository.saveEntries(_sortedEntries());
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'Journal restore from snapshot threw unexpectedly',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      _errorMessage = 'Unable to restore journal entries.';
+      _setSaving(false);
+      notifyListeners();
+      return const AppFailure('Unable to restore journal entries.');
+    }
+    result.when(
+      success: (_) {
+        _errorMessage = null;
+      },
+      failure: (message) {
+        AppLogger.warn('Journal restore from snapshot failed', error: message);
+        _errorMessage = message;
+      },
+    );
+    _setSaving(false);
+    notifyListeners();
+    if (_errorMessage == null && enqueueSync) {
+      await _enqueueSyncOperation(
+        operationType: SyncOperationType.clear,
+        entityId: 'journal',
+        payload: journalSnapshot(_entries),
+      );
+    }
+    return _errorMessage == null
+        ? const AppSuccess(null)
+        : AppFailure(_errorMessage!);
+  }
+
   Future<void> _persistEntries(String failureMessage) async {
     _setSaving(true);
     late final AppResult<void> result;

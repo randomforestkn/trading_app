@@ -11,6 +11,8 @@ abstract class AuthRepository {
 
   Future<AppResult<void>> signOut();
 
+  Future<AppResult<void>> saveSession(AuthSession session);
+
   Future<AppResult<AuthSession>> signInWithEmailPassword({
     required String email,
     required String password,

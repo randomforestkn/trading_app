@@ -136,6 +136,55 @@ class AuthState extends ChangeNotifier {
     }
   }
 
+  Future<AppResult<void>> restoreFromSession(AuthSession? session) async {
+    _setLoading(true);
+    late final AppResult<void> result;
+    try {
+      if (session == null) {
+        result = await _repository.signOut();
+      } else {
+        result = await _repository.saveSession(session);
+      }
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'Auth session restore from snapshot threw unexpectedly',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      _errorMessage = 'Unable to restore demo session.';
+      _setLoading(false);
+      return const AppFailure('Unable to restore demo session.');
+    }
+    result.when(
+      success: (_) {
+        _currentSession = session;
+        _currentUser = session?.user;
+        _errorMessage = null;
+      },
+      failure: (message) {
+        AppLogger.warn(
+          'Auth session restore from snapshot failed',
+          error: message,
+        );
+        _errorMessage = message;
+      },
+    );
+    _setLoading(false);
+    if (_errorMessage == null) {
+      final payload = authSessionSnapshot(_currentSession);
+      await _enqueueSyncOperation(
+        operationType: session == null
+            ? SyncOperationType.delete
+            : SyncOperationType.update,
+        entityId: _currentUser?.id ?? 'auth-session',
+        payload: payload,
+      );
+    }
+    return _errorMessage == null
+        ? const AppSuccess(null)
+        : AppFailure(_errorMessage!);
+  }
+
   Future<void> _enqueueSyncOperation({
     required SyncOperationType operationType,
     required String entityId,

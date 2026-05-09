@@ -73,6 +73,17 @@ class SettingsScreen extends StatelessWidget {
           onPressed: () =>
               Navigator.of(context).pushNamed(ExportReportsScreen.routeName),
         ),
+        const SizedBox(height: 10),
+        _SettingsActionCard(
+          icon: Icons.file_upload_outlined,
+          iconColor: AppTheme.warning,
+          title: 'Import / restore backup',
+          subtitle:
+              'Paste a JSON backup and restore local data on this device.',
+          actionLabel: 'Open',
+          onPressed: () =>
+              Navigator.of(context).pushNamed(ExportReportsScreen.routeName),
+        ),
       ],
     );
   }

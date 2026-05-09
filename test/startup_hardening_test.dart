@@ -59,6 +59,11 @@ class _ThrowingAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<AppResult<void>> saveSession(AuthSession session) {
+    throw StateError('auth unavailable');
+  }
+
+  @override
   Future<AppResult<AuthSession>> signInWithEmailPassword({
     required String email,
     required String password,

@@ -50,10 +50,12 @@ class ExportBundle {
 
   Map<String, Object?> toJson() {
     return {
+      'backupVersion': AppConfig.backupFormatVersion,
       'export': {
         'createdAt': createdAt.toIso8601String(),
         'format': exportFormat.name,
         'includedSections': includedSections,
+        'backupVersion': AppConfig.backupFormatVersion,
       },
       'app': {
         'name': AppConfig.appName,

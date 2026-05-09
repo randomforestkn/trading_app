@@ -30,6 +30,7 @@ void main() {
     expect(find.text('Sync now'), findsOneWidget);
     expect(find.text('Local only'), findsWidgets);
     expect(find.text('Export data / reports'), findsOneWidget);
+    expect(find.text('Import / restore backup'), findsOneWidget);
   });
 
   testWidgets('Settings shows signed-in user', (tester) async {

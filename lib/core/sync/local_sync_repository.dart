@@ -295,7 +295,7 @@ class LocalSyncRepository implements SyncRepository {
               Map<String, Object?>.from(item.cast<String, dynamic>()),
             ),
           )
-          .toList(growable: false);
+          .toList(growable: true);
     } on FormatException catch (error, stackTrace) {
       AppLogger.warn(
         'Sync operations contained invalid data',

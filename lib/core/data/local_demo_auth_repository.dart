@@ -55,13 +55,22 @@ class LocalDemoAuthRepository implements AuthRepository {
       ),
       createdAt: now,
     );
-    await store?.write(jsonEncode(session.toJson()));
-    return AppSuccess(session);
+    final result = await saveSession(session);
+    return result.when(
+      success: (_) => AppSuccess(session),
+      failure: AppFailure.new,
+    );
   }
 
   @override
   Future<AppResult<void>> signOut() async {
     await store?.clear();
+    return const AppSuccess(null);
+  }
+
+  @override
+  Future<AppResult<void>> saveSession(AuthSession session) async {
+    await store?.write(jsonEncode(session.toJson()));
     return const AppSuccess(null);
   }
 

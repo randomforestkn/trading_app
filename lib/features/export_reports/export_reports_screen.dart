@@ -9,6 +9,10 @@ import '../../core/data/auth_state.dart';
 import '../../core/data/market_state.dart';
 import '../../core/data/paper_trading_account.dart';
 import '../../core/data/paper_trading_state.dart';
+import '../../core/import/import_repository.dart';
+import '../../core/import/import_result.dart';
+import '../../core/import/local_import_repository.dart';
+import '../../core/import/restore_plan.dart';
 import '../../core/export/export_bundle.dart';
 import '../../core/export/export_format.dart';
 import '../../core/export/export_repository.dart';
@@ -28,22 +32,61 @@ import '../../core/widgets/empty_state_view.dart';
 import '../../core/widgets/section_header.dart';
 
 class ExportReportsScreen extends StatefulWidget {
-  const ExportReportsScreen({super.key, this.repository});
+  const ExportReportsScreen({
+    super.key,
+    this.repository,
+    this.importRepository,
+  });
 
   static const routeName = '/export-reports';
 
   final ExportRepository? repository;
+  final ImportRepository? importRepository;
 
   @override
   State<ExportReportsScreen> createState() => _ExportReportsScreenState();
 }
 
 class _ExportReportsScreenState extends State<ExportReportsScreen> {
+  final TextEditingController _importController = TextEditingController();
   ExportResult? _lastResult;
   String? _lastError;
+  RestorePlan? _restorePlan;
+  ImportResult? _importResult;
+  String? _importError;
 
   ExportRepository get _repository =>
       widget.repository ?? const LocalExportRepository();
+
+  ImportRepository _importRepository({
+    required PaperTradingState paperState,
+    required JournalState journalState,
+    required OptionsPortfolioState optionsState,
+    required SyncState syncState,
+    required AuthState authState,
+  }) {
+    return widget.importRepository ??
+        LocalImportRepository(
+          paperTradingState: paperState,
+          journalState: journalState,
+          optionsPortfolioState: optionsState,
+          authState: authState,
+          syncState: syncState,
+        );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _importController.addListener(_handleImportTextChanged);
+  }
+
+  @override
+  void dispose() {
+    _importController.removeListener(_handleImportTextChanged);
+    _importController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,11 +100,40 @@ class _ExportReportsScreenState extends State<ExportReportsScreen> {
 
     return AppPage(
       title: 'Export & reports',
-      subtitle: 'Local backups, CSV exports, and readable review reports',
+      subtitle:
+          'Local backups, restores, CSV exports, and readable review reports',
       children: [
         AppInfoBanner(
           title: 'Local only',
           message: 'Exports are generated on this device. Nothing is uploaded.',
+        ),
+        AppInfoBanner(
+          title: 'Restore warning',
+          message: AppConfig.importRestoreDisclaimer,
+        ),
+        const SectionHeader('Restore backup'),
+        _RestoreCard(
+          controller: _importController,
+          restorePlan: _restorePlan,
+          result: _importResult,
+          error: _importError,
+          onValidate: () => _validateBackup(
+            context,
+            paperState,
+            journalState,
+            optionsState,
+            syncState,
+            authState,
+          ),
+          onRestore: () => _confirmRestore(
+            context,
+            paperState,
+            journalState,
+            optionsState,
+            syncState,
+            authState,
+          ),
+          onClear: _clearImportInput,
         ),
         const SectionHeader('Backup'),
         AppCard(
@@ -265,6 +337,12 @@ class _ExportReportsScreenState extends State<ExportReportsScreen> {
     );
   }
 
+  void _handleImportTextChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   ExportBundle _buildBundle({
     required ExportFormat format,
     required PaperTradingState paperState,
@@ -386,6 +464,142 @@ class _ExportReportsScreenState extends State<ExportReportsScreen> {
     );
   }
 
+  Future<void> _validateBackup(
+    BuildContext context,
+    PaperTradingState paperState,
+    JournalState journalState,
+    OptionsPortfolioState optionsState,
+    SyncState syncState,
+    AuthState authState,
+  ) async {
+    final repository = _importRepository(
+      paperState: paperState,
+      journalState: journalState,
+      optionsState: optionsState,
+      syncState: syncState,
+      authState: authState,
+    );
+    final result = await repository.previewBackup(_importController.text);
+    result.when(
+      success: (plan) {
+        setState(() {
+          _restorePlan = plan;
+          _importError = null;
+          _importResult = null;
+        });
+        if (context.mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Backup validated.')));
+        }
+      },
+      failure: (message) {
+        setState(() {
+          _restorePlan = null;
+          _importError = message;
+          _importResult = null;
+        });
+        if (context.mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(message)));
+        }
+      },
+    );
+  }
+
+  Future<void> _confirmRestore(
+    BuildContext context,
+    PaperTradingState paperState,
+    JournalState journalState,
+    OptionsPortfolioState optionsState,
+    SyncState syncState,
+    AuthState authState,
+  ) async {
+    final plan = _restorePlan;
+    if (plan == null || plan.hasErrors) {
+      await _validateBackup(
+        context,
+        paperState,
+        journalState,
+        optionsState,
+        syncState,
+        authState,
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Restore backup?'),
+        content: const Text(
+          'This will replace your local paper trading, journal, and options data on this device. Make sure you have a copy before continuing.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.danger,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Restore backup'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) {
+      return;
+    }
+
+    final repository = _importRepository(
+      paperState: paperState,
+      journalState: journalState,
+      optionsState: optionsState,
+      syncState: syncState,
+      authState: authState,
+    );
+    final result = await repository.restoreBackup(_importController.text);
+    result.when(
+      success: (importResult) {
+        setState(() {
+          _restorePlan = importResult.restorePlan;
+          _importResult = importResult;
+          _importError = null;
+        });
+        if (context.mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(importResult.message)));
+        }
+      },
+      failure: (message) {
+        setState(() {
+          _importError = message;
+          _importResult = null;
+        });
+        if (context.mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(message)));
+        }
+      },
+    );
+  }
+
+  void _clearImportInput() {
+    setState(() {
+      _importController.clear();
+      _restorePlan = null;
+      _importResult = null;
+      _importError = null;
+    });
+  }
+
   Future<void> _copyLastResult() async {
     final result = _lastResult;
     if (result == null) {
@@ -470,6 +684,182 @@ class _ExportResultCard extends StatelessWidget {
       return content;
     }
     return [...lines.take(20), '...'].join('\n');
+  }
+}
+
+String _formatDateTime(DateTime? value) {
+  if (value == null) {
+    return 'Not available';
+  }
+  final local = value.toLocal();
+  String twoDigits(int number) => number.toString().padLeft(2, '0');
+  return '${local.year}-${twoDigits(local.month)}-${twoDigits(local.day)} '
+      '${twoDigits(local.hour)}:${twoDigits(local.minute)}';
+}
+
+class _RestoreCard extends StatelessWidget {
+  const _RestoreCard({
+    required this.controller,
+    required this.restorePlan,
+    required this.result,
+    required this.error,
+    required this.onValidate,
+    required this.onRestore,
+    required this.onClear,
+  });
+
+  final TextEditingController controller;
+  final RestorePlan? restorePlan;
+  final ImportResult? result;
+  final String? error;
+  final VoidCallback onValidate;
+  final VoidCallback onRestore;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final plan = restorePlan;
+    final canRestore = plan != null && plan.canRestore;
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Paste JSON backup',
+            style: TextStyle(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Validate a local backup before restoring. Restore replaces paper trading, journal, and options data on this device.',
+            style: TextStyle(color: Colors.white60),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: controller,
+            minLines: 7,
+            maxLines: 10,
+            keyboardType: TextInputType.multiline,
+            style: const TextStyle(
+              fontFamily: 'monospace',
+              fontSize: 12,
+              color: Colors.white,
+            ),
+            decoration: InputDecoration(
+              hintText: 'Paste JSON backup here',
+              hintStyle: const TextStyle(color: Colors.white38),
+              filled: true,
+              fillColor: Colors.white.withValues(alpha: 0.04),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.white12),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.white12),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              AppPrimaryButton(
+                label: 'Validate backup',
+                icon: Icons.verified_outlined,
+                onPressed: onValidate,
+              ),
+              AppPrimaryButton(
+                label: 'Restore backup',
+                icon: Icons.restore_outlined,
+                isDestructive: true,
+                onPressed: canRestore ? onRestore : null,
+              ),
+              AppSecondaryButton(
+                label: 'Clear input',
+                icon: Icons.clear_outlined,
+                onPressed: controller.text.isEmpty ? null : onClear,
+              ),
+            ],
+          ),
+          if (plan != null) ...[
+            const SizedBox(height: 16),
+            Text(
+              'Restore preview',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            _SettingsRow(
+              label: 'Created at',
+              value: _formatDateTime(plan.createdAt),
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Sections',
+              value: plan.includedSections.join(', '),
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Paper orders',
+              value: plan.paperOrdersCount.toString(),
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Journal entries',
+              value: plan.journalEntriesCount.toString(),
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Options positions',
+              value: plan.optionsPositionsCount.toString(),
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Options trades',
+              value: plan.optionsTradesCount.toString(),
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Wheel cycles',
+              value: plan.wheelCyclesCount.toString(),
+            ),
+            if (plan.hasWarnings) ...[
+              const Divider(height: 22),
+              Text(
+                plan.warnings.join(' '),
+                style: const TextStyle(
+                  color: AppTheme.warning,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ],
+          if (result != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              result!.message,
+              style: const TextStyle(color: Colors.white60),
+            ),
+          ],
+          if (error != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              error!,
+              style: const TextStyle(
+                color: AppTheme.danger,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }
 
