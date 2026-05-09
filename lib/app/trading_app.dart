@@ -18,6 +18,7 @@ import '../features/analytics/analytics_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/learn/learn_screen.dart';
 import '../features/portfolio/portfolio_screen.dart';
+import '../features/strategy_simulator/strategy_simulator_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/watchlist/watchlist_screen.dart';
 import 'theme/app_theme.dart';
@@ -129,6 +130,8 @@ class _TradingAppState extends State<TradingApp> {
       routes: {
         ActivityScreen.routeName: (_) => const ActivityScreen(),
         AnalyticsScreen.routeName: (_) => const AnalyticsScreen(),
+        StrategySimulatorScreen.routeName: (_) =>
+            const StrategySimulatorScreen(),
         SettingsScreen.routeName: (_) => const SettingsScreen(),
       },
       home: home,

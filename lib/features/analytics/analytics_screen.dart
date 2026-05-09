@@ -8,6 +8,7 @@ import '../../core/config/app_config.dart';
 import '../../core/data/market_state.dart';
 import '../../core/data/paper_trading_state.dart';
 import '../../core/models/paper_order.dart';
+import '../../core/widgets/app_buttons.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_info_banner.dart';
 import '../../core/widgets/app_page.dart';
@@ -15,6 +16,7 @@ import '../../core/widgets/app_stat_tile.dart';
 import '../../core/widgets/empty_state_view.dart';
 import '../../core/widgets/mini_trend_chart.dart';
 import '../../core/widgets/section_header.dart';
+import '../strategy_simulator/strategy_simulator_screen.dart';
 
 class AnalyticsScreen extends StatelessWidget {
   const AnalyticsScreen({super.key});
@@ -52,6 +54,32 @@ class AnalyticsScreen extends StatelessWidget {
           performance: performance,
           activity: activity,
           orders: paperState.orders,
+        ),
+        const SizedBox(height: 12),
+        AppCard(
+          padding: const EdgeInsets.all(16),
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              const SizedBox(
+                width: 240,
+                child: Text(
+                  'Open strategy simulator',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
+              ),
+              AppSecondaryButton(
+                onPressed: () => Navigator.of(
+                  context,
+                ).pushNamed(StrategySimulatorScreen.routeName),
+                icon: Icons.tune,
+                label: 'Open',
+              ),
+            ],
+          ),
         ),
         if (portfolio.hasConcentrationWarning) ...[
           const SizedBox(height: 12),
