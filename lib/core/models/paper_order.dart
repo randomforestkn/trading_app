@@ -30,6 +30,8 @@ class PaperOrder {
     required this.estimatedTotal,
     required this.timestamp,
     required this.status,
+    this.averageCostAtExecution,
+    this.realizedProfitLoss,
   });
 
   final String assetSymbol;
@@ -40,4 +42,6 @@ class PaperOrder {
   final double estimatedTotal;
   final DateTime timestamp;
   final PaperOrderStatus status;
+  final double? averageCostAtExecution;
+  final double? realizedProfitLoss;
 }

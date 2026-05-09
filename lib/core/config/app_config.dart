@@ -11,6 +11,7 @@ class AppConfig {
   static const maxMarketHistoryLength = 30;
   static const simulatedPriceMovementMin = -0.02;
   static const simulatedPriceMovementMax = 0.02;
+  static const analyticsConcentrationThreshold = 0.40;
 
   static const paperTradingDisclaimer =
       'Paper trading only - no real money involved.';

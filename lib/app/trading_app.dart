@@ -14,6 +14,7 @@ import '../core/data/paper_trading_repository.dart';
 import '../core/data/paper_trading_store.dart';
 import '../core/utils/app_logger.dart';
 import '../features/activity/activity_screen.dart';
+import '../features/analytics/analytics_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/learn/learn_screen.dart';
 import '../features/portfolio/portfolio_screen.dart';
@@ -127,6 +128,7 @@ class _TradingAppState extends State<TradingApp> {
       darkTheme: AppTheme.dark,
       routes: {
         ActivityScreen.routeName: (_) => const ActivityScreen(),
+        AnalyticsScreen.routeName: (_) => const AnalyticsScreen(),
         SettingsScreen.routeName: (_) => const SettingsScreen(),
       },
       home: home,
@@ -177,6 +179,7 @@ class _TradingShellState extends State<TradingShell> {
     HomeScreen(),
     WatchlistScreen(),
     PortfolioScreen(),
+    AnalyticsScreen(),
     LearnScreen(),
   ];
 
@@ -204,6 +207,11 @@ class _TradingShellState extends State<TradingShell> {
             icon: Icon(Icons.account_balance_wallet_outlined),
             selectedIcon: Icon(Icons.account_balance_wallet),
             label: 'Portfolio',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.query_stats_outlined),
+            selectedIcon: Icon(Icons.query_stats),
+            label: 'Analytics',
           ),
           NavigationDestination(
             icon: Icon(Icons.school_outlined),

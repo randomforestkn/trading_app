@@ -28,11 +28,13 @@ class TradeExecutionResult {
 class PaperTradingState extends ChangeNotifier {
   PaperTradingState({
     double initialCashBalance = AppConfig.defaultStartingCash,
+    double? initialStartingCash,
     List<PortfolioPosition>? initialPositions,
     List<PaperOrder>? initialOrders,
     DateTime? initialLastUpdated,
     PaperTradingRepository? repository,
   }) : _cashBalance = initialCashBalance,
+       _startingCash = initialStartingCash ?? AppConfig.defaultStartingCash,
        _lastUpdated = initialLastUpdated,
        _repository = repository ?? const LocalPaperTradingRepository() {
     for (final position in initialPositions ?? MockMarketData.positions) {
@@ -74,6 +76,7 @@ class PaperTradingState extends ChangeNotifier {
   }) {
     return PaperTradingState(
       initialCashBalance: account.cashBalance,
+      initialStartingCash: account.startingCash,
       initialPositions: account.positions,
       initialOrders: account.orders,
       initialLastUpdated: account.lastUpdated,
@@ -88,6 +91,7 @@ class PaperTradingState extends ChangeNotifier {
   }
 
   double _cashBalance;
+  double _startingCash;
   DateTime? _lastUpdated;
   final Map<String, PortfolioPosition> _positions = {};
   final List<PaperOrder> _orders = [];
@@ -96,6 +100,8 @@ class PaperTradingState extends ChangeNotifier {
   String? _lastError;
 
   double get cashBalance => _cashBalance;
+
+  double get startingCash => _startingCash;
 
   DateTime? get lastUpdated => _lastUpdated;
 
@@ -137,6 +143,11 @@ class PaperTradingState extends ChangeNotifier {
     (total, position) => total + position.unrealizedProfitLoss,
   );
 
+  double get realizedProfitLoss => _orders.fold<double>(
+    0,
+    (total, order) => total + (order.realizedProfitLoss ?? 0),
+  );
+
   double unrealizedProfitLossFor(MarketState marketState) {
     return positionsFor(marketState).fold<double>(
       0,
@@ -165,6 +176,11 @@ class PaperTradingState extends ChangeNotifier {
 
     final estimatedTotal = quantity * executionPrice;
     final existingPosition = _positions[asset.symbol];
+    final averageCostAtExecution = existingPosition?.averagePrice;
+    final realizedProfitLoss =
+        side == PaperOrderSide.sell && averageCostAtExecution != null
+        ? (executionPrice - averageCostAtExecution) * quantity
+        : null;
 
     if (side == PaperOrderSide.buy) {
       if (estimatedTotal > _cashBalance) {
@@ -216,6 +232,8 @@ class PaperTradingState extends ChangeNotifier {
         estimatedTotal: estimatedTotal,
         timestamp: DateTime.now(),
         status: PaperOrderStatus.filled,
+        averageCostAtExecution: averageCostAtExecution,
+        realizedProfitLoss: realizedProfitLoss,
       ),
     );
     _lastUpdated = DateTime.now();
@@ -296,6 +314,7 @@ class PaperTradingState extends ChangeNotifier {
 
   PaperTradingAccount _toAccount() {
     return PaperTradingAccount(
+      startingCash: _startingCash,
       cashBalance: _cashBalance,
       positions: positions,
       orders: List.unmodifiable(_orders),
@@ -305,6 +324,7 @@ class PaperTradingState extends ChangeNotifier {
 
   void _applyAccount(PaperTradingAccount account) {
     _cashBalance = account.cashBalance;
+    _startingCash = account.startingCash;
     _lastUpdated = account.lastUpdated;
     _positions
       ..clear()

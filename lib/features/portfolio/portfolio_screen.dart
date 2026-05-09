@@ -5,12 +5,14 @@ import '../../core/data/market_state.dart';
 import '../../core/data/paper_trading_state.dart';
 import '../../core/models/asset.dart';
 import '../../core/models/portfolio_position.dart';
+import '../../core/widgets/app_buttons.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_stat_tile.dart';
 import '../../core/widgets/empty_state_view.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/change_text.dart';
 import '../../core/widgets/section_header.dart';
+import '../analytics/analytics_screen.dart';
 import '../activity/activity_screen.dart';
 
 class PortfolioScreen extends StatelessWidget {
@@ -48,6 +50,31 @@ class PortfolioScreen extends StatelessWidget {
           cashBalance: tradingState.cashBalance,
           unrealized: tradingState.unrealizedProfitLossFor(marketState),
           lastUpdated: tradingState.lastUpdated,
+        ),
+        const SizedBox(height: 12),
+        AppCard(
+          padding: const EdgeInsets.all(16),
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              const SizedBox(
+                width: 220,
+                child: Text(
+                  'View performance analytics',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
+              ),
+              AppSecondaryButton(
+                onPressed: () =>
+                    Navigator.of(context).pushNamed(AnalyticsScreen.routeName),
+                icon: Icons.query_stats_outlined,
+                label: 'Open',
+              ),
+            ],
+          ),
         ),
         const SectionHeader('Open positions'),
         if (positions.isEmpty)

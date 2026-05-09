@@ -133,6 +133,8 @@ class PaperTradingAccount {
       'estimatedTotal': order.estimatedTotal,
       'timestamp': order.timestamp.toIso8601String(),
       'status': order.status.name,
+      'averageCostAtExecution': order.averageCostAtExecution,
+      'realizedProfitLoss': order.realizedProfitLoss,
     };
   }
 
@@ -149,6 +151,10 @@ class PaperTradingAccount {
     final quantity = (value['quantity'] as num?)?.toDouble();
     final executionPrice = (value['executionPrice'] as num?)?.toDouble();
     final estimatedTotal = (value['estimatedTotal'] as num?)?.toDouble();
+    final averageCostAtExecution = (value['averageCostAtExecution'] as num?)
+        ?.toDouble();
+    final realizedProfitLoss = (value['realizedProfitLoss'] as num?)
+        ?.toDouble();
     final side = _sideForName(sideName);
     final status = _statusForName(statusName);
     final timestamp = timestampValue == null
@@ -175,6 +181,8 @@ class PaperTradingAccount {
       estimatedTotal: estimatedTotal,
       timestamp: timestamp,
       status: status,
+      averageCostAtExecution: averageCostAtExecution,
+      realizedProfitLoss: realizedProfitLoss,
     );
   }
 
