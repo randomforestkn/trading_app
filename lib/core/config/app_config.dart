@@ -29,6 +29,10 @@ class AppConfig {
   static const syncDisclaimer =
       'Cloud sync is not connected yet. Changes are tracked locally for future backend integration.';
   static const syncDiagnosticsLabel = 'Local-first sync';
+  static const exportDisclaimer =
+      'Exports stay local unless you manually share the generated file.';
+  static const exportReportDisclaimer =
+      'Reports are generated from local paper trading, journal, and options data.';
   static const demoUserId = 'demo-user';
   static const demoUserEmail = 'demo@cleartrade.local';
   static const demoUserDisplayName = 'Demo Trader';

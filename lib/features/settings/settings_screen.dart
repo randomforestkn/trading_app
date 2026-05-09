@@ -7,6 +7,7 @@ import '../../core/data/market_state.dart';
 import '../../core/data/paper_trading_state.dart';
 import '../../core/sync/sync_state.dart';
 import '../../core/sync/sync_status.dart';
+import '../export_reports/export_reports_screen.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/section_header.dart';
 
@@ -60,6 +61,17 @@ class SettingsScreen extends StatelessWidget {
           marketState: marketState,
           authState: authState,
           syncState: SyncScope.of(context),
+        ),
+        const SectionHeader('Export & reports'),
+        _SettingsActionCard(
+          icon: Icons.file_download_outlined,
+          iconColor: AppTheme.primary,
+          title: 'Export data / reports',
+          subtitle:
+              'Generate JSON backups, CSV exports, and performance reports.',
+          actionLabel: 'Open',
+          onPressed: () =>
+              Navigator.of(context).pushNamed(ExportReportsScreen.routeName),
         ),
       ],
     );

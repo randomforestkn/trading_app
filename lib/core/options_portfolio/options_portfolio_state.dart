@@ -399,6 +399,8 @@ class OptionsPortfolioState extends ChangeNotifier {
     }
   }
 
+  Map<String, Object?> toJson() => _toAccount().toJson();
+
   void _applyAccount(OptionsPortfolioAccount account) {
     _positions
       ..clear()

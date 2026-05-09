@@ -27,6 +27,7 @@ import '../core/sync/sync_state.dart';
 import '../core/utils/app_logger.dart';
 import '../features/activity/activity_screen.dart';
 import '../features/analytics/analytics_screen.dart';
+import '../features/export_reports/export_reports_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/insights/insights_screen.dart';
 import '../features/journal/journal_screen.dart';
@@ -211,6 +212,7 @@ class _TradingAppState extends State<TradingApp> {
       routes: {
         ActivityScreen.routeName: (_) => const ActivityScreen(),
         AnalyticsScreen.routeName: (_) => const AnalyticsScreen(),
+        ExportReportsScreen.routeName: (_) => const ExportReportsScreen(),
         InsightsScreen.routeName: (_) => const InsightsScreen(),
         JournalScreen.routeName: (_) => const JournalScreen(),
         OptionsPortfolioScreen.routeName: (_) => const OptionsPortfolioScreen(),

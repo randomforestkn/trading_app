@@ -39,4 +39,19 @@ class PerformanceSnapshot {
       totalPortfolioValue: analytics.totalPortfolioValue,
     );
   }
+
+  Map<String, Object?> toJson() {
+    return {
+      'realizedProfitLoss': realizedProfitLoss,
+      'unrealizedProfitLoss': unrealizedProfitLoss,
+      'totalProfitLoss': totalProfitLoss,
+      'returnPercent': returnPercent,
+      'cashAllocationPercent': cashAllocationPercent,
+      'investedAllocationPercent': investedAllocationPercent,
+      'concentrationRiskPercent': concentrationRiskPercent,
+      'hasConcentrationWarning': hasConcentrationWarning,
+      'startingCash': startingCash,
+      'totalPortfolioValue': totalPortfolioValue,
+    };
+  }
 }

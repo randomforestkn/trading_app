@@ -18,10 +18,13 @@ class AuthState extends ChangeNotifier {
   final AuthRepository _repository;
   final SyncState? _syncState;
   AppUser? _currentUser;
+  AuthSession? _currentSession;
   bool _isLoading = false;
   String? _errorMessage;
 
   AppUser? get currentUser => _currentUser;
+
+  AuthSession? get currentSession => _currentSession;
 
   bool get isAuthenticated => _currentUser != null;
 
@@ -46,6 +49,7 @@ class AuthState extends ChangeNotifier {
     }
     result.when(
       success: (session) {
+        _currentSession = session;
         _currentUser = session?.user;
         _errorMessage = null;
       },
@@ -76,6 +80,7 @@ class AuthState extends ChangeNotifier {
     result.when(
       success: (session) {
         signedInSession = session;
+        _currentSession = session;
         _currentUser = session.user;
         _errorMessage = null;
       },
@@ -113,6 +118,7 @@ class AuthState extends ChangeNotifier {
     result.when(
       success: (_) {
         _currentUser = null;
+        _currentSession = null;
         _errorMessage = null;
       },
       failure: (message) {
