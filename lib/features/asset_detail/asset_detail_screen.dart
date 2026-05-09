@@ -4,6 +4,10 @@ import '../../app/theme/app_theme.dart';
 import '../../core/data/market_state.dart';
 import '../../core/models/asset.dart';
 import '../../core/models/paper_order.dart';
+import '../../core/widgets/app_buttons.dart';
+import '../../core/widgets/app_card.dart';
+import '../../core/widgets/app_info_banner.dart';
+import '../../core/widgets/app_pill_chip.dart';
 import '../../core/widgets/change_text.dart';
 import '../../core/widgets/mini_trend_chart.dart';
 import '../../core/widgets/section_header.dart';
@@ -27,7 +31,7 @@ class AssetDetailScreen extends StatelessWidget {
           children: [
             Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 820),
+                constraints: const BoxConstraints(maxWidth: 900),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -40,28 +44,32 @@ class AssetDetailScreen extends StatelessWidget {
                     StatGrid(stats: currentAsset.tradingStats),
                     const SizedBox(height: 10),
                     StatGrid(stats: currentAsset.stats),
+                    const SizedBox(height: 14),
+                    AppInfoBanner(
+                      title: 'Paper trading',
+                      message:
+                          'Use the live simulated chart for practice only. Prices are demo data.',
+                      accentColor: AppTheme.secondary,
+                    ),
                     const SizedBox(height: 22),
                     Row(
                       children: [
                         Expanded(
-                          child: FilledButton.icon(
+                          child: AppPrimaryButton(
                             onPressed: () =>
                                 _openTrade(context, PaperOrderSide.buy),
-                            icon: const Icon(Icons.add_chart),
-                            label: const Text('Buy'),
+                            icon: Icons.add_chart,
+                            label: 'Buy',
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: FilledButton.icon(
-                            style: FilledButton.styleFrom(
-                              backgroundColor: AppTheme.danger,
-                              foregroundColor: Colors.white,
-                            ),
+                          child: AppPrimaryButton(
                             onPressed: () =>
                                 _openTrade(context, PaperOrderSide.sell),
-                            icon: const Icon(Icons.remove_circle_outline),
-                            label: const Text('Sell'),
+                            icon: Icons.remove_circle_outline,
+                            label: 'Sell',
+                            isDestructive: true,
                           ),
                         ),
                       ],
@@ -93,60 +101,112 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 26,
-                  backgroundColor: AppTheme.primary.withValues(alpha: 0.14),
-                  child: Text(
-                    asset.symbol.characters.take(2).toString(),
-                    style: const TextStyle(
-                      color: AppTheme.primary,
-                      fontWeight: FontWeight.w900,
+    return AppCard(
+      padding: const EdgeInsets.all(20),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isCompact = constraints.maxWidth < 420;
+          final header = isCompact
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CircleAvatar(
+                      radius: 26,
+                      backgroundColor: AppTheme.primary.withValues(alpha: 0.14),
+                      child: Text(
+                        asset.symbol.characters.take(2).toString(),
+                        style: const TextStyle(
+                          color: AppTheme.primary,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        asset.symbol,
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                      Text(
-                        '${asset.name} • ${asset.type.label}',
-                        style: const TextStyle(color: Colors.white60),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 22),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '\$${asset.price.toStringAsFixed(asset.price > 1000 ? 0 : 2)}',
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-                const SizedBox(width: 12),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 5),
-                  child: ChangeText(asset.dailyChangePercent),
-                ),
-              ],
-            ),
-          ],
-        ),
+                    const SizedBox(height: 12),
+                    Text(
+                      asset.symbol,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${asset.name} • ${asset.type.label}',
+                      style: const TextStyle(color: Colors.white60),
+                    ),
+                    const SizedBox(height: 22),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            '\$${asset.price.toStringAsFixed(asset.price > 1000 ? 0 : 2)}',
+                            style: Theme.of(context).textTheme.headlineMedium,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 5),
+                          child: ChangeText(asset.dailyChangePercent),
+                        ),
+                      ],
+                    ),
+                  ],
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 26,
+                          backgroundColor: AppTheme.primary.withValues(
+                            alpha: 0.14,
+                          ),
+                          child: Text(
+                            asset.symbol.characters.take(2).toString(),
+                            style: const TextStyle(
+                              color: AppTheme.primary,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                asset.symbol,
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.headlineSmall,
+                              ),
+                              Text(
+                                '${asset.name} • ${asset.type.label}',
+                                style: const TextStyle(color: Colors.white60),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 22),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '\$${asset.price.toStringAsFixed(asset.price > 1000 ? 0 : 2)}',
+                          style: Theme.of(context).textTheme.headlineMedium,
+                        ),
+                        const SizedBox(width: 12),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 5),
+                          child: ChangeText(asset.dailyChangePercent),
+                        ),
+                      ],
+                    ),
+                  ],
+                );
+          return header;
+        },
       ),
     );
   }
@@ -175,70 +235,88 @@ class _LivePriceChartState extends State<_LivePriceChart> {
     final percentChange = first == 0 ? 0.0 : (priceChange / first) * 100;
     final isPositive = priceChange >= 0;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Live simulated price history',
-                      style: TextStyle(color: Colors.white60),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '\$${latest.toStringAsFixed(latest > 1000 ? 0 : 2)}',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    Text(
-                      '${priceChange >= 0 ? '+' : ''}\$${priceChange.toStringAsFixed(2)} (${percentChange >= 0 ? '+' : ''}${percentChange.toStringAsFixed(2)}%)',
-                      style: TextStyle(
-                        color: isPositive ? AppTheme.primary : AppTheme.danger,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ],
-                ),
-                SegmentedButton<String>(
-                  showSelectedIcon: false,
-                  segments: const [
-                    ButtonSegment(value: '1D', label: Text('1D')),
-                    ButtonSegment(value: '1W', label: Text('1W')),
-                    ButtonSegment(value: '1M', label: Text('1M')),
-                  ],
-                  selected: {_timeframe},
-                  onSelectionChanged: (value) {
-                    setState(() => _timeframe = value.first);
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 260,
-              child: CustomPaint(
-                painter: _ChartPainter(points: points, isPositive: isPositive),
-                child: Align(
-                  alignment: Alignment.bottomRight,
-                  child: MiniTrendChart(
-                    points: points,
-                    isPositive: isPositive,
-                    height: 44,
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Live simulated price history',
+                    style: TextStyle(color: Colors.white60),
                   ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '\$${latest.toStringAsFixed(latest > 1000 ? 0 : 2)}',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  Text(
+                    '${priceChange >= 0 ? '+' : ''}\$${priceChange.toStringAsFixed(2)} (${percentChange >= 0 ? '+' : ''}${percentChange.toStringAsFixed(2)}%)',
+                    style: TextStyle(
+                      color: isPositive ? AppTheme.primary : AppTheme.danger,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+              Wrap(
+                spacing: 8,
+                children: [
+                  AppPillChip(
+                    label: '1D',
+                    selected: _timeframe == '1D',
+                    onSelected: (selected) {
+                      if (selected) {
+                        setState(() => _timeframe = '1D');
+                      }
+                    },
+                  ),
+                  AppPillChip(
+                    label: '1W',
+                    selected: _timeframe == '1W',
+                    onSelected: (selected) {
+                      if (selected) {
+                        setState(() => _timeframe = '1W');
+                      }
+                    },
+                  ),
+                  AppPillChip(
+                    label: '1M',
+                    selected: _timeframe == '1M',
+                    onSelected: (selected) {
+                      if (selected) {
+                        setState(() => _timeframe = '1M');
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 260,
+            child: CustomPaint(
+              painter: _ChartPainter(points: points, isPositive: isPositive),
+              child: Align(
+                alignment: Alignment.bottomRight,
+                child: MiniTrendChart(
+                  points: points,
+                  isPositive: isPositive,
+                  height: 44,
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -268,16 +346,28 @@ class _ChartPainter extends CustomPainter {
     final maxValue = points.reduce((a, b) => a > b ? a : b);
     final range = maxValue == minValue ? 1 : maxValue - minValue;
     final path = Path();
+    final offsets = <Offset>[];
 
     for (var i = 0; i < points.length; i++) {
       final x = size.width * i / (points.length - 1);
       final y = size.height - ((points[i] - minValue) / range * size.height);
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
+      offsets.add(Offset(x, y));
     }
+
+    path.moveTo(offsets.first.dx, offsets.first.dy);
+    for (var i = 0; i < offsets.length - 1; i++) {
+      final current = offsets[i];
+      final next = offsets[i + 1];
+      final controlPoint = Offset((current.dx + next.dx) / 2, current.dy);
+      final endPoint = Offset((current.dx + next.dx) / 2, next.dy);
+      path.quadraticBezierTo(
+        controlPoint.dx,
+        controlPoint.dy,
+        endPoint.dx,
+        endPoint.dy,
+      );
+    }
+    path.lineTo(offsets.last.dx, offsets.last.dy);
 
     final paint = Paint()
       ..shader = LinearGradient(
@@ -305,13 +395,10 @@ class _ExplanationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Text(
-          asset.explanation,
-          style: Theme.of(context).textTheme.bodyLarge,
-        ),
+    return AppCard(
+      child: Text(
+        asset.explanation,
+        style: Theme.of(context).textTheme.bodyLarge,
       ),
     );
   }

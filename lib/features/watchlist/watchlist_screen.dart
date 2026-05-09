@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/data/market_state.dart';
 import '../../core/models/asset.dart';
+import '../../core/widgets/app_card.dart';
+import '../../core/widgets/app_info_banner.dart';
+import '../../core/widgets/app_pill_chip.dart';
+import '../../core/widgets/empty_state_view.dart';
+import '../../core/widgets/loading_state_view.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/asset_tile.dart';
 import '../asset_detail/asset_detail_screen.dart';
@@ -64,52 +70,36 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
         ),
       ],
       children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                const Icon(Icons.info_outline),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    marketState.lastRefreshAt == null
-                        ? '${AppConfig.paperTradingDisclaimer} Not refreshed yet.'
-                        : '${AppConfig.paperTradingDisclaimer} Updated ${_formatTimestamp(marketState.lastRefreshAt!)}.',
-                  ),
-                ),
-              ],
-            ),
-          ),
+        AppInfoBanner(
+          title: marketState.dataMode.label,
+          message: marketState.lastRefreshAt == null
+              ? '${AppConfig.paperTradingDisclaimer} Not refreshed yet.'
+              : '${AppConfig.paperTradingDisclaimer} Updated ${_formatTimestamp(marketState.lastRefreshAt!)}.',
         ),
         const SizedBox(height: 14),
         if (marketState.errorMessage != null) ...[
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Text(
-                marketState.errorMessage!,
-                style: const TextStyle(
-                  color: Colors.redAccent,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
+          AppInfoBanner(
+            title: 'Market refresh issue',
+            message: marketState.errorMessage!,
+            icon: Icons.error_outline,
+            accentColor: Theme.of(context).colorScheme.error,
           ),
           const SizedBox(height: 14),
         ],
-        TextField(
-          controller: _searchController,
-          decoration: InputDecoration(
-            hintText: 'Search symbol or name',
-            prefixIcon: const Icon(Icons.search),
-            suffixIcon: _searchController.text.isEmpty
-                ? null
-                : IconButton(
-                    tooltip: 'Clear search',
-                    onPressed: _searchController.clear,
-                    icon: const Icon(Icons.close),
-                  ),
+        AppCard(
+          child: TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              hintText: 'Search symbol or name',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _searchController.text.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: 'Clear search',
+                      onPressed: _searchController.clear,
+                      icon: const Icon(Icons.close),
+                    ),
+            ),
           ),
         ),
         const SizedBox(height: 14),
@@ -119,8 +109,8 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
             children: [
               Padding(
                 padding: const EdgeInsets.only(right: 8),
-                child: FilterChip(
-                  label: const Text('All'),
+                child: AppPillChip(
+                  label: 'All',
                   selected: _selectedType == null,
                   onSelected: (_) => setState(() => _selectedType = null),
                 ),
@@ -128,8 +118,8 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
               ...AssetType.values.map(
                 (type) => Padding(
                   padding: const EdgeInsets.only(right: 8),
-                  child: FilterChip(
-                    label: Text(type.label),
+                  child: AppPillChip(
+                    label: type.label,
                     selected: _selectedType == type,
                     onSelected: (_) => setState(() => _selectedType = type),
                   ),
@@ -139,12 +129,13 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
           ),
         ),
         const SizedBox(height: 18),
-        if (filteredAssets.isEmpty)
-          const Card(
-            child: Padding(
-              padding: EdgeInsets.all(18),
-              child: Text('No assets match this search.'),
-            ),
+        if (marketState.isLoading)
+          const LoadingStateView(message: 'Refreshing simulated prices...')
+        else if (filteredAssets.isEmpty)
+          const EmptyStateView(
+            title: 'No matches',
+            message: 'No assets match this search or filter combination.',
+            icon: Icons.manage_search_outlined,
           )
         else
           ...filteredAssets.map(
@@ -175,6 +166,7 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
     BuildContext context,
     MarketState marketState,
   ) async {
+    HapticFeedback.selectionClick();
     final result = await marketState.refreshPrices();
     if (!context.mounted) {
       return;

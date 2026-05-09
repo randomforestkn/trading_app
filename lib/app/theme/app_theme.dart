@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
 
+import '../../core/design/app_colors.dart';
+import '../../core/design/app_radius.dart';
+import '../../core/design/app_typography.dart';
+
 class AppTheme {
   const AppTheme._();
 
-  static const Color background = Color(0xFF080C10);
-  static const Color surface = Color(0xFF101820);
-  static const Color surfaceHigh = Color(0xFF17222C);
-  static const Color border = Color(0xFF233240);
-  static const Color primary = Color(0xFF36D399);
-  static const Color secondary = Color(0xFF6EA8FE);
-  static const Color danger = Color(0xFFFF6B6B);
-  static const Color warning = Color(0xFFFFC857);
+  static const Color background = AppColors.background;
+  static const Color surface = AppColors.surface;
+  static const Color surfaceHigh = AppColors.surfaceHigh;
+  static const Color border = AppColors.border;
+  static const Color primary = AppColors.primary;
+  static const Color secondary = AppColors.secondary;
+  static const Color danger = AppColors.danger;
+  static const Color warning = AppColors.warning;
 
   static ThemeData get dark {
     final colorScheme =
@@ -30,21 +34,14 @@ class AppTheme {
       brightness: Brightness.dark,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: background,
-      fontFamily: 'SF Pro Display',
-      textTheme: const TextTheme(
-        headlineLarge: TextStyle(fontWeight: FontWeight.w800),
-        headlineMedium: TextStyle(fontWeight: FontWeight.w800),
-        titleLarge: TextStyle(fontWeight: FontWeight.w800),
-        titleMedium: TextStyle(fontWeight: FontWeight.w700),
-        bodyLarge: TextStyle(height: 1.35),
-        bodyMedium: TextStyle(height: 1.35),
-      ),
+      fontFamily: AppTypography.fontFamily,
+      textTheme: AppTypography.darkTextTheme,
       cardTheme: CardThemeData(
         color: surface,
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppRadius.card),
           side: const BorderSide(color: border),
         ),
       ),
@@ -76,7 +73,9 @@ class AppTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.button),
+          ),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           textStyle: const TextStyle(fontWeight: FontWeight.w800),
         ),
@@ -85,7 +84,9 @@ class AppTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: Colors.white,
           side: const BorderSide(color: border),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.button),
+          ),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           textStyle: const TextStyle(fontWeight: FontWeight.w800),
         ),
@@ -94,11 +95,11 @@ class AppTheme {
         filled: true,
         fillColor: surfaceHigh,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppRadius.button),
           borderSide: const BorderSide(color: border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppRadius.button),
           borderSide: const BorderSide(color: border),
         ),
       ),

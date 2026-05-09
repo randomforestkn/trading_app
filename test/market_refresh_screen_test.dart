@@ -44,7 +44,7 @@ void main() {
     await tester.enterText(find.byType(TextField), 'ZZZ-NO-MATCH');
     await tester.pump();
 
-    expect(find.text('No assets match this search.'), findsOneWidget);
+    expect(find.text('No matches'), findsOneWidget);
   });
 
   testWidgets('portfolio empty state renders when no positions exist', (
@@ -60,10 +60,7 @@ void main() {
       _harness(marketState, const PortfolioScreen(), paperState: paperState),
     );
 
-    expect(
-      find.text('No open positions yet. Place a paper trade to begin.'),
-      findsOneWidget,
-    );
+    expect(find.text('No open positions yet'), findsOneWidget);
   });
 
   testWidgets('Home shows safe repository failure state', (tester) async {

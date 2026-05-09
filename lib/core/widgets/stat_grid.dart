@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../design/app_spacing.dart';
+import 'app_stat_tile.dart';
+
 class StatGrid extends StatelessWidget {
   const StatGrid({required this.stats, super.key});
 
@@ -7,39 +10,20 @@ class StatGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: MediaQuery.sizeOf(context).width > 520 ? 4 : 2,
-      childAspectRatio: 2.8,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 10,
-      crossAxisSpacing: 10,
+    final width = MediaQuery.sizeOf(context).width;
+    final tileWidth = width > 920
+        ? 190.0
+        : width > 600
+        ? 170.0
+        : 150.0;
+
+    return Wrap(
+      spacing: AppSpacing.sm,
+      runSpacing: AppSpacing.sm,
       children: stats.entries.map((entry) {
-        return Card(
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  entry.key,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(color: Colors.white60),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  entry.value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w900),
-                ),
-              ],
-            ),
-          ),
+        return SizedBox(
+          width: tileWidth,
+          child: AppStatTile(label: entry.key, value: entry.value),
         );
       }).toList(),
     );

@@ -4,6 +4,7 @@ import 'package:trading_app/core/data/market_state.dart';
 import 'package:trading_app/core/data/mock_market_data.dart';
 import 'package:trading_app/core/data/paper_trading_state.dart';
 import 'package:trading_app/core/models/paper_order.dart';
+import 'package:trading_app/core/widgets/app_buttons.dart';
 import 'package:trading_app/features/trade/trade_screen.dart';
 
 void main() {
@@ -20,7 +21,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('Quantity must be greater than zero.'), findsOneWidget);
-    final submit = tester.widget<FilledButton>(
+    final submit = tester.widget<AppPrimaryButton>(
       find.byKey(const Key('trade_submit_button')),
     );
     expect(submit.onPressed, isNull);

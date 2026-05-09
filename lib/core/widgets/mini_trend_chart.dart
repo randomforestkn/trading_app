@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../app/theme/app_theme.dart';
+import '../design/app_colors.dart';
 
 class MiniTrendChart extends StatelessWidget {
   const MiniTrendChart({
@@ -24,7 +24,7 @@ class MiniTrendChart extends StatelessWidget {
       child: CustomPaint(
         painter: _MiniTrendPainter(
           points: points,
-          color: isPositive ? AppTheme.primary : AppTheme.danger,
+          color: isPositive ? AppColors.primary : AppColors.danger,
         ),
       ),
     );
@@ -45,18 +45,8 @@ class _MiniTrendPainter extends CustomPainter {
 
     final minValue = points.reduce((a, b) => a < b ? a : b);
     final maxValue = points.reduce((a, b) => a > b ? a : b);
-    final range = maxValue == minValue ? 1 : maxValue - minValue;
-    final path = Path();
-
-    for (var i = 0; i < points.length; i++) {
-      final x = size.width * i / (points.length - 1);
-      final y = size.height - ((points[i] - minValue) / range * size.height);
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
-    }
+    final range = (maxValue == minValue ? 1 : maxValue - minValue).toDouble();
+    final path = _smoothPath(size, minValue, range);
 
     canvas.drawPath(
       path,
@@ -72,5 +62,35 @@ class _MiniTrendPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _MiniTrendPainter oldDelegate) {
     return points != oldDelegate.points || color != oldDelegate.color;
+  }
+
+  Path _smoothPath(Size size, double minValue, double range) {
+    final path = Path();
+    final pointsList = <Offset>[];
+    for (var i = 0; i < points.length; i++) {
+      final x = size.width * i / (points.length - 1);
+      final y = size.height - (((points[i] - minValue) / range) * size.height);
+      pointsList.add(Offset(x, y));
+    }
+
+    if (pointsList.isEmpty) {
+      return path;
+    }
+
+    path.moveTo(pointsList.first.dx, pointsList.first.dy);
+    for (var i = 0; i < pointsList.length - 1; i++) {
+      final current = pointsList[i];
+      final next = pointsList[i + 1];
+      final controlPoint = Offset((current.dx + next.dx) / 2, current.dy);
+      final endPoint = Offset((current.dx + next.dx) / 2, next.dy);
+      path.quadraticBezierTo(
+        controlPoint.dx,
+        controlPoint.dy,
+        endPoint.dx,
+        endPoint.dy,
+      );
+    }
+    path.lineTo(pointsList.last.dx, pointsList.last.dy);
+    return path;
   }
 }

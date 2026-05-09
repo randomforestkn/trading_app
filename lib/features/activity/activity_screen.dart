@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import '../../app/theme/app_theme.dart';
 import '../../core/data/paper_trading_state.dart';
 import '../../core/models/paper_order.dart';
+import '../../core/widgets/app_card.dart';
+import '../../core/widgets/app_pill_chip.dart';
+import '../../core/widgets/empty_state_view.dart';
 import '../../core/widgets/app_page.dart';
 
 class ActivityScreen extends StatelessWidget {
@@ -20,32 +23,17 @@ class ActivityScreen extends StatelessWidget {
       subtitle: 'Recent paper transactions and orders',
       children: [
         if (orders.isEmpty)
-          const Card(
-            child: Padding(
-              padding: EdgeInsets.all(18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.receipt_long_outlined, color: Colors.white60),
-                  SizedBox(height: 10),
-                  Text(
-                    'No paper orders yet',
-                    style: TextStyle(fontWeight: FontWeight.w900),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    'Executed paper trades will appear here after confirmation.',
-                    style: TextStyle(color: Colors.white60),
-                  ),
-                ],
-              ),
-            ),
+          const EmptyStateView(
+            title: 'No paper orders yet',
+            message:
+                'Executed paper trades will appear here after confirmation.',
+            icon: Icons.receipt_long_outlined,
           )
         else
           ...orders.map(
             (order) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
-              child: Card(
+              child: AppCard(
                 child: ListTile(
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -68,7 +56,14 @@ class ActivityScreen extends StatelessWidget {
                   ),
                   title: Row(
                     children: [
-                      _SideLabel(side: order.side),
+                      AppPillChip(
+                        label: order.side.label,
+                        selected: true,
+                        onSelected: (_) {},
+                        selectedColor: order.side == PaperOrderSide.buy
+                            ? AppTheme.primary
+                            : AppTheme.danger,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -135,36 +130,5 @@ class ActivityScreen extends StatelessWidget {
       'Dec',
     ];
     return months[month - 1];
-  }
-}
-
-class _SideLabel extends StatelessWidget {
-  const _SideLabel({required this.side});
-
-  final PaperOrderSide side;
-
-  @override
-  Widget build(BuildContext context) {
-    final isBuy = side == PaperOrderSide.buy;
-    final color = isBuy ? AppTheme.primary : AppTheme.danger;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withValues(alpha: 0.45)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        child: Text(
-          side.label,
-          style: TextStyle(
-            color: color,
-            fontSize: 11,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-      ),
-    );
   }
 }

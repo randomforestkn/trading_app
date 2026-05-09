@@ -6,6 +6,10 @@ import '../../core/data/market_state.dart';
 import '../../core/data/paper_trading_state.dart';
 import '../../core/models/asset.dart';
 import '../../core/models/paper_order.dart';
+import '../../core/widgets/app_buttons.dart';
+import '../../core/widgets/app_card.dart';
+import '../../core/widgets/app_info_banner.dart';
+import '../../core/widgets/app_stat_tile.dart';
 
 enum OrderType { market, limit }
 
@@ -128,117 +132,111 @@ class _TradeScreenState extends State<TradeScreen> {
             Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 620),
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(18),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          'Order ticket',
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        const SizedBox(height: 12),
-                        const _PaperTradingNotice(),
-                        const SizedBox(height: 16),
-                        SegmentedButton<PaperOrderSide>(
-                          segments: const [
-                            ButtonSegment(
-                              value: PaperOrderSide.buy,
-                              label: Text('Buy'),
-                            ),
-                            ButtonSegment(
-                              value: PaperOrderSide.sell,
-                              label: Text('Sell'),
-                            ),
-                          ],
-                          selected: {_side},
-                          onSelectionChanged: (value) {
-                            setState(() => _side = value.first);
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        _AccountAvailabilityCard(
-                          side: _side,
-                          cashBalance: tradingState.cashBalance,
-                          ownedQuantity: tradingState.quantityFor(
-                            widget.asset.symbol,
+                child: AppCard(
+                  padding: const EdgeInsets.all(18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'Order ticket',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 12),
+                      AppInfoBanner(
+                        title: 'Paper trading only',
+                        message:
+                            '${AppConfig.paperTradingDisclaimer} ${AppConfig.simulatedPricesDisclaimer}',
+                        accentColor: AppTheme.secondary,
+                      ),
+                      const SizedBox(height: 16),
+                      SegmentedButton<PaperOrderSide>(
+                        segments: const [
+                          ButtonSegment(
+                            value: PaperOrderSide.buy,
+                            label: Text('Buy'),
                           ),
-                          assetSymbol: widget.asset.symbol,
+                          ButtonSegment(
+                            value: PaperOrderSide.sell,
+                            label: Text('Sell'),
+                          ),
+                        ],
+                        selected: {_side},
+                        onSelectionChanged: (value) {
+                          setState(() => _side = value.first);
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      _AccountAvailabilityCard(
+                        side: _side,
+                        cashBalance: tradingState.cashBalance,
+                        ownedQuantity: tradingState.quantityFor(
+                          widget.asset.symbol,
                         ),
+                        assetSymbol: widget.asset.symbol,
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        key: const Key('trade_quantity_field'),
+                        controller: _quantityController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: 'Quantity',
+                          prefixIcon: const Icon(Icons.pin_outlined),
+                          errorText: quantityError,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SegmentedButton<OrderType>(
+                        segments: const [
+                          ButtonSegment(
+                            value: OrderType.market,
+                            label: Text('Market'),
+                          ),
+                          ButtonSegment(
+                            value: OrderType.limit,
+                            label: Text('Limit'),
+                          ),
+                        ],
+                        selected: {_orderType},
+                        onSelectionChanged: (value) {
+                          setState(() => _orderType = value.first);
+                        },
+                      ),
+                      if (_orderType == OrderType.limit) ...[
                         const SizedBox(height: 16),
                         TextField(
-                          key: const Key('trade_quantity_field'),
-                          controller: _quantityController,
+                          key: const Key('trade_limit_price_field'),
+                          controller: _limitController,
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
                           decoration: InputDecoration(
-                            labelText: 'Quantity',
-                            prefixIcon: const Icon(Icons.pin_outlined),
-                            errorText: quantityError,
+                            labelText: 'Limit price',
+                            prefixIcon: const Icon(Icons.price_change_outlined),
+                            errorText: priceError,
                           ),
-                        ),
-                        const SizedBox(height: 16),
-                        SegmentedButton<OrderType>(
-                          segments: const [
-                            ButtonSegment(
-                              value: OrderType.market,
-                              label: Text('Market'),
-                            ),
-                            ButtonSegment(
-                              value: OrderType.limit,
-                              label: Text('Limit'),
-                            ),
-                          ],
-                          selected: {_orderType},
-                          onSelectionChanged: (value) {
-                            setState(() => _orderType = value.first);
-                          },
-                        ),
-                        if (_orderType == OrderType.limit) ...[
-                          const SizedBox(height: 16),
-                          TextField(
-                            key: const Key('trade_limit_price_field'),
-                            controller: _limitController,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            decoration: InputDecoration(
-                              labelText: 'Limit price',
-                              prefixIcon: const Icon(
-                                Icons.price_change_outlined,
-                              ),
-                              errorText: priceError,
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 18),
-                        _ConfirmationSummaryCard(
-                          asset: currentAsset,
-                          side: _side,
-                          orderType: _orderType,
-                          quantity: _quantity,
-                          orderPrice: _orderPriceFor(currentAsset),
-                          estimatedValue: _estimatedValueFor(currentAsset),
-                        ),
-                        const SizedBox(height: 18),
-                        FilledButton.icon(
-                          key: const Key('trade_submit_button'),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: isBuy
-                                ? AppTheme.primary
-                                : AppTheme.danger,
-                            foregroundColor: isBuy
-                                ? Colors.black
-                                : Colors.white,
-                          ),
-                          onPressed: canSubmit ? _showOrderPreview : null,
-                          icon: const Icon(Icons.check_circle_outline),
-                          label: Text('Preview ${isBuy ? 'buy' : 'sell'}'),
                         ),
                       ],
-                    ),
+                      const SizedBox(height: 18),
+                      _ConfirmationSummaryCard(
+                        asset: currentAsset,
+                        side: _side,
+                        orderType: _orderType,
+                        quantity: _quantity,
+                        orderPrice: _orderPriceFor(currentAsset),
+                        estimatedValue: _estimatedValueFor(currentAsset),
+                      ),
+                      const SizedBox(height: 18),
+                      AppPrimaryButton(
+                        key: const Key('trade_submit_button'),
+                        onPressed: canSubmit ? _showOrderPreview : null,
+                        icon: Icons.check_circle_outline,
+                        isDestructive: !isBuy,
+                        label: 'Preview ${isBuy ? 'buy' : 'sell'}',
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -271,47 +269,83 @@ class _TradeScreenState extends State<TradeScreen> {
             heightFactor: 0.86,
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(18, 6, 18, 18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Review paper order',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 12),
-                  const _PaperTradingNotice(compact: true),
-                  const SizedBox(height: 12),
-                  _SummaryRow(label: 'Asset', value: currentAsset.symbol),
-                  _SummaryRow(label: 'Side', value: _side.label),
-                  _SummaryRow(
-                    label: 'Quantity',
-                    value: _quantity.toStringAsFixed(4),
-                  ),
-                  _SummaryRow(
-                    label: 'Price',
-                    value: '\$${orderPrice.toStringAsFixed(2)}',
-                  ),
-                  _SummaryRow(
-                    label: 'Estimated total',
-                    value: '\$${estimatedValue.toStringAsFixed(2)}',
-                    emphasized: true,
-                  ),
-                  _SummaryRow(
-                    label: _side == PaperOrderSide.buy
-                        ? 'Cash after order'
-                        : 'Shares after order',
-                    value: _side == PaperOrderSide.buy
-                        ? '\$${remainingCash.toStringAsFixed(2)}'
-                        : remainingShares.toStringAsFixed(4),
-                  ),
-                  const SizedBox(height: 16),
-                  FilledButton.icon(
-                    key: const Key('trade_confirm_execution_button'),
-                    onPressed: () => Navigator.of(context).pop(true),
-                    icon: const Icon(Icons.verified_outlined),
-                    label: Text('Place ${_side.label.toLowerCase()} order'),
-                  ),
-                ],
+              child: AppCard(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Review paper order',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 12),
+                    AppInfoBanner(
+                      title: 'Simulated execution',
+                      message:
+                          '${AppConfig.paperTradingDisclaimer} ${AppConfig.simulatedPricesDisclaimer}',
+                      accentColor: AppTheme.secondary,
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        SizedBox(
+                          width: 168,
+                          child: AppStatTile(
+                            label: 'Asset',
+                            value: currentAsset.symbol,
+                          ),
+                        ),
+                        SizedBox(
+                          width: 168,
+                          child: AppStatTile(label: 'Side', value: _side.label),
+                        ),
+                        SizedBox(
+                          width: 168,
+                          child: AppStatTile(
+                            label: 'Quantity',
+                            value: _quantity.toStringAsFixed(4),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 168,
+                          child: AppStatTile(
+                            label: 'Price',
+                            value: '\$${orderPrice.toStringAsFixed(2)}',
+                          ),
+                        ),
+                        SizedBox(
+                          width: 168,
+                          child: AppStatTile(
+                            label: 'Estimated total',
+                            value: '\$${estimatedValue.toStringAsFixed(2)}',
+                            color: AppTheme.primary,
+                          ),
+                        ),
+                        SizedBox(
+                          width: 168,
+                          child: AppStatTile(
+                            label: _side == PaperOrderSide.buy
+                                ? 'Cash after order'
+                                : 'Shares after order',
+                            value: _side == PaperOrderSide.buy
+                                ? '\$${remainingCash.toStringAsFixed(2)}'
+                                : remainingShares.toStringAsFixed(4),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    AppPrimaryButton(
+                      key: const Key('trade_confirm_execution_button'),
+                      onPressed: () => Navigator.of(context).pop(true),
+                      icon: Icons.verified_outlined,
+                      label: 'Place ${_side.label.toLowerCase()} order',
+                      isDestructive: _side == PaperOrderSide.sell,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -352,42 +386,6 @@ class _TradeScreenState extends State<TradeScreen> {
     if (result.success) {
       Navigator.of(context).pop();
     }
-  }
-}
-
-class _PaperTradingNotice extends StatelessWidget {
-  const _PaperTradingNotice({this.compact = false});
-
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppTheme.secondary.withValues(alpha: 0.10),
-        border: Border.all(color: AppTheme.border),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(compact ? 10 : 12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Icon(Icons.info_outline, color: AppTheme.secondary, size: 20),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                '${AppConfig.paperTradingDisclaimer} ${AppConfig.simulatedPricesDisclaimer}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.white70,
-                  height: 1.3,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 
@@ -475,13 +473,16 @@ class _ConfirmationSummaryCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 10,
+              runSpacing: 8,
               children: [
                 Text(
                   'Confirmation summary',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
-                const Spacer(),
                 Chip(label: Text(sideLabel)),
               ],
             ),
@@ -525,9 +526,16 @@ class _SummaryRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 7),
       child: Row(
         children: [
-          Text(label, style: const TextStyle(color: Colors.white60)),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white60),
+            ),
+          ),
           const SizedBox(width: 12),
-          Expanded(
+          Flexible(
             child: Text(
               value,
               maxLines: 1,

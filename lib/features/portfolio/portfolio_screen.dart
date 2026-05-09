@@ -5,6 +5,9 @@ import '../../core/data/market_state.dart';
 import '../../core/data/paper_trading_state.dart';
 import '../../core/models/asset.dart';
 import '../../core/models/portfolio_position.dart';
+import '../../core/widgets/app_card.dart';
+import '../../core/widgets/app_stat_tile.dart';
+import '../../core/widgets/empty_state_view.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/change_text.dart';
 import '../../core/widgets/section_header.dart';
@@ -48,13 +51,10 @@ class PortfolioScreen extends StatelessWidget {
         ),
         const SectionHeader('Open positions'),
         if (positions.isEmpty)
-          const Card(
-            child: Padding(
-              padding: EdgeInsets.all(18),
-              child: Text(
-                'No open positions yet. Place a paper trade to begin.',
-              ),
-            ),
+          const EmptyStateView(
+            title: 'No open positions yet',
+            message: 'Place a paper trade to begin building a paper portfolio.',
+            icon: Icons.account_balance_wallet_outlined,
           )
         else
           ...positions.map(
@@ -189,49 +189,47 @@ class _PortfolioSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Total portfolio value',
-              style: TextStyle(color: Colors.white60),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              '\$${portfolioValue.toStringAsFixed(2)}',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              lastUpdated == null
-                  ? 'Default mock portfolio'
-                  : 'Last updated ${_formatTimestamp(lastUpdated!)}',
-              style: const TextStyle(color: Colors.white60),
-            ),
-            const SizedBox(height: 18),
-            Row(
-              children: [
-                Expanded(
-                  child: _Metric(
-                    label: 'Cash balance',
-                    value: '\$${cashBalance.toStringAsFixed(2)}',
-                  ),
+    return AppCard(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Total portfolio value',
+            style: TextStyle(color: Colors.white60),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '\$${portfolioValue.toStringAsFixed(2)}',
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            lastUpdated == null
+                ? 'Default mock portfolio'
+                : 'Last updated ${_formatTimestamp(lastUpdated!)}',
+            style: const TextStyle(color: Colors.white60),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: AppStatTile(
+                  label: 'Cash balance',
+                  value: '\$${cashBalance.toStringAsFixed(2)}',
                 ),
-                Expanded(
-                  child: _Metric(
-                    label: 'Unrealized P/L',
-                    value:
-                        '${unrealized >= 0 ? '+' : ''}\$${unrealized.toStringAsFixed(2)}',
-                    positive: unrealized >= 0,
-                  ),
+              ),
+              Expanded(
+                child: AppStatTile(
+                  label: 'Unrealized P/L',
+                  value:
+                      '${unrealized >= 0 ? '+' : ''}\$${unrealized.toStringAsFixed(2)}',
+                  color: unrealized >= 0 ? AppTheme.primary : AppTheme.danger,
                 ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -262,39 +260,6 @@ class _PortfolioSummary extends StatelessWidget {
   }
 }
 
-class _Metric extends StatelessWidget {
-  const _Metric({required this.label, required this.value, this.positive});
-
-  final String label;
-  final String value;
-  final bool? positive;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(color: Colors.white60, fontSize: 12),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            color: positive == null
-                ? Colors.white
-                : positive!
-                ? AppTheme.primary
-                : AppTheme.danger,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _PositionTile extends StatelessWidget {
   const _PositionTile({required this.position});
 
@@ -302,7 +267,7 @@ class _PositionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return AppCard(
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         title: Text(
@@ -343,18 +308,16 @@ class _AllocationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: MediaQuery.sizeOf(context).width > 520 ? 190 : 165,
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(Icons.pie_chart, color: color),
-              const SizedBox(height: 14),
-              Text(value, style: Theme.of(context).textTheme.titleLarge),
-              Text(label, style: const TextStyle(color: Colors.white60)),
-            ],
-          ),
+      child: AppCard(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.pie_chart, color: color),
+            const SizedBox(height: 14),
+            Text(value, style: Theme.of(context).textTheme.titleLarge),
+            Text(label, style: const TextStyle(color: Colors.white60)),
+          ],
         ),
       ),
     );

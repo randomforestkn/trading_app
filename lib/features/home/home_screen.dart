@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../app/theme/app_theme.dart';
 import '../../core/config/app_config.dart';
@@ -7,6 +8,10 @@ import '../../core/data/mock_market_data.dart';
 import '../../core/data/paper_trading_state.dart';
 import '../../core/models/asset.dart';
 import '../../core/models/market_index.dart';
+import '../../core/widgets/app_buttons.dart';
+import '../../core/widgets/app_card.dart';
+import '../../core/widgets/app_info_banner.dart';
+import '../../core/widgets/app_stat_tile.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/asset_tile.dart';
 import '../../core/widgets/change_text.dart';
@@ -48,7 +53,11 @@ class HomeScreen extends StatelessWidget {
         ),
       ],
       children: [
-        const _SimulatedPricesNotice(),
+        AppInfoBanner(
+          title: MarketScope.of(context).dataMode.label,
+          message:
+              '${AppConfig.paperTradingDisclaimer} ${AppConfig.simulatedPricesDisclaimer}',
+        ),
         const SizedBox(height: 12),
         const _MarketSnapshotCard(),
         const SizedBox(height: 12),
@@ -153,70 +162,68 @@ class _RefreshSummaryCard extends StatelessWidget {
     final gainer = marketState.biggestGainer;
     final loser = marketState.biggestLoser;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Simulated market',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-                FilledButton.icon(
-                  onPressed: marketState.isLoading
-                      ? null
-                      : () => _refreshPrices(context),
-                  icon: const Icon(Icons.refresh),
-                  label: Text(
-                    marketState.isLoading ? 'Refreshing' : 'Refresh prices',
-                  ),
-                ),
-              ],
-            ),
-            if (marketState.errorMessage != null) ...[
-              const SizedBox(height: 10),
-              Text(
-                marketState.errorMessage!,
-                style: const TextStyle(
-                  color: AppTheme.danger,
-                  fontWeight: FontWeight.w800,
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              SizedBox(
+                width: 240,
+                child: Text(
+                  'Simulated market',
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
+              AppPrimaryButton(
+                onPressed: marketState.isLoading
+                    ? null
+                    : () => _refreshPrices(context),
+                icon: Icons.refresh,
+                label: marketState.isLoading ? 'Refreshing' : 'Refresh prices',
+              ),
             ],
+          ),
+          if (marketState.errorMessage != null) ...[
             const SizedBox(height: 10),
             Text(
-              marketState.lastRefreshAt == null
-                  ? 'Not refreshed yet'
-                  : 'Last refresh ${_formatTimestamp(marketState.lastRefreshAt!)}',
-              style: const TextStyle(color: Colors.white60),
-            ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: _MoveSnapshot(
-                    label: 'Biggest gainer',
-                    asset: gainer,
-                    positive: true,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _MoveSnapshot(
-                    label: 'Biggest loser',
-                    asset: loser,
-                    positive: false,
-                  ),
-                ),
-              ],
+              marketState.errorMessage!,
+              style: const TextStyle(
+                color: AppTheme.danger,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ],
-        ),
+          const SizedBox(height: 10),
+          Text(
+            marketState.lastRefreshAt == null
+                ? 'Not refreshed yet'
+                : 'Last refresh ${_formatTimestamp(marketState.lastRefreshAt!)}',
+            style: const TextStyle(color: Colors.white60),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _MoveSnapshot(
+                label: 'Biggest gainer',
+                asset: gainer,
+                positive: true,
+              ),
+              _MoveSnapshot(
+                label: 'Biggest loser',
+                asset: loser,
+                positive: false,
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -228,6 +235,7 @@ class _RefreshSummaryCard extends StatelessWidget {
   }
 
   Future<void> _refreshPrices(BuildContext context) async {
+    HapticFeedback.selectionClick();
     final result = await marketState.refreshPrices();
     if (!context.mounted) {
       return;
@@ -256,36 +264,15 @@ class _MoveSnapshot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = positive ? AppTheme.primary : AppTheme.danger;
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceHigh,
-        border: Border.all(color: AppTheme.border),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: const TextStyle(color: Colors.white60)),
-            const SizedBox(height: 6),
-            Text(
-              asset?.symbol ?? '-',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              asset == null
-                  ? '0.00%'
-                  : '${asset!.dailyChangePercent >= 0 ? '+' : ''}${asset!.dailyChangePercent.toStringAsFixed(2)}%',
-              style: TextStyle(color: color, fontWeight: FontWeight.w900),
-            ),
-          ],
-        ),
+    return SizedBox(
+      width: 240,
+      child: AppStatTile(
+        label: label,
+        value: asset?.symbol ?? '-',
+        subtitle: asset == null
+            ? '0.00%'
+            : '${asset!.dailyChangePercent >= 0 ? '+' : ''}${asset!.dailyChangePercent.toStringAsFixed(2)}%',
+        color: positive ? AppTheme.primary : AppTheme.danger,
       ),
     );
   }
@@ -296,9 +283,9 @@ class _MarketSnapshotCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return AppCard(
+      padding: const EdgeInsets.all(20),
       child: Container(
-        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
           gradient: const LinearGradient(
@@ -329,37 +316,23 @@ class _MarketSnapshotCard extends StatelessWidget {
               style: TextStyle(color: Colors.white60),
             ),
             const SizedBox(height: 18),
-            Row(
-              children: [
-                _SnapshotMetric(label: 'Advancers', value: '58%'),
-                _SnapshotMetric(label: 'Volatility', value: 'Low'),
-                _SnapshotMetric(label: 'Sentiment', value: 'Neutral'),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: const [
+                SizedBox(
+                  width: 164,
+                  child: _SnapshotMetric(label: 'Advancers', value: '58%'),
+                ),
+                SizedBox(
+                  width: 164,
+                  child: _SnapshotMetric(label: 'Volatility', value: 'Low'),
+                ),
+                SizedBox(
+                  width: 164,
+                  child: _SnapshotMetric(label: 'Sentiment', value: 'Neutral'),
+                ),
               ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SimulatedPricesNotice extends StatelessWidget {
-  const _SimulatedPricesNotice();
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            const Icon(Icons.info_outline, color: AppTheme.secondary),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                '${MarketScope.of(context).dataMode.label}. ${AppConfig.paperTradingDisclaimer}',
-                style: const TextStyle(color: Colors.white70),
-              ),
             ),
           ],
         ),
@@ -376,19 +349,7 @@ class _SnapshotMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white54, fontSize: 12),
-          ),
-          const SizedBox(height: 4),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w900)),
-        ],
-      ),
-    );
+    return AppStatTile(label: label, value: value);
   }
 }
 

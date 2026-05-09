@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../app/theme/app_theme.dart';
+import '../design/app_colors.dart';
 
 class ChangeText extends StatelessWidget {
   const ChangeText(this.value, {this.compact = false, super.key});
@@ -11,7 +11,7 @@ class ChangeText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final positive = value >= 0;
-    final color = positive ? AppTheme.primary : AppTheme.danger;
+    final color = positive ? AppColors.primary : AppColors.danger;
     final prefix = positive ? '+' : '';
 
     return Text(
