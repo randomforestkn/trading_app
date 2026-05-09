@@ -17,6 +17,7 @@ import '../../core/widgets/app_pill_chip.dart';
 import '../../core/widgets/app_stat_tile.dart';
 import '../../core/widgets/empty_state_view.dart';
 import '../../core/widgets/section_header.dart';
+import '../insights/insights_screen.dart';
 import '../journal/journal_editor_screen.dart';
 import 'option_position_editor_screen.dart';
 
@@ -64,6 +65,34 @@ class OptionsPortfolioScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             _OverviewCard(analytics: analytics, optionsState: optionsState),
+            const SizedBox(height: 12),
+            AppCard(
+              padding: const EdgeInsets.all(16),
+              child: Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  const SizedBox(
+                    width: 260,
+                    child: Text(
+                      'Review options behavior',
+                      style: TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                  AppSecondaryButton(
+                    label: 'Open insights',
+                    icon: Icons.insights_outlined,
+                    onPressed: optionsState.isLoading
+                        ? null
+                        : () => Navigator.of(
+                            context,
+                          ).pushNamed(InsightsScreen.routeName),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 12),
             AppCard(
               padding: const EdgeInsets.all(16),

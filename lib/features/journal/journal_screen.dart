@@ -12,6 +12,7 @@ import '../../core/widgets/app_pill_chip.dart';
 import '../../core/widgets/app_stat_tile.dart';
 import '../../core/widgets/empty_state_view.dart';
 import '../../core/widgets/section_header.dart';
+import '../insights/insights_screen.dart';
 import '../journal/journal_editor_screen.dart';
 
 class JournalScreen extends StatefulWidget {
@@ -65,6 +66,34 @@ class _JournalScreenState extends State<JournalScreen> {
                   'Capture what you expected, how you felt, and what you will do differently next time. Notes stay on this device.',
               icon: Icons.menu_book_outlined,
               accentColor: AppTheme.secondary,
+            ),
+            const SizedBox(height: 12),
+            AppCard(
+              padding: const EdgeInsets.all(16),
+              child: Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  const SizedBox(
+                    width: 250,
+                    child: Text(
+                      'Analyze journal patterns',
+                      style: TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                  AppSecondaryButton(
+                    label: 'Open insights',
+                    icon: Icons.insights_outlined,
+                    onPressed: journalState.isLoading
+                        ? null
+                        : () => Navigator.of(
+                            context,
+                          ).pushNamed(InsightsScreen.routeName),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 12),
             _InsightsCard(insights: insights),

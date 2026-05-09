@@ -7,9 +7,11 @@ import 'package:trading_app/core/data/paper_trading_state.dart';
 import 'package:trading_app/core/journal/journal_state.dart';
 import 'package:trading_app/core/journal/local_journal_repository.dart';
 import 'package:trading_app/core/journal/journal_store.dart';
+import 'package:trading_app/core/insights/insights_state.dart';
 import 'package:trading_app/core/models/paper_order.dart';
 import 'package:trading_app/features/asset_detail/asset_detail_screen.dart';
 import 'package:trading_app/features/home/home_screen.dart';
+import 'package:trading_app/features/insights/insights_screen.dart';
 import 'package:trading_app/features/journal/journal_editor_screen.dart';
 import 'package:trading_app/features/journal/journal_screen.dart';
 import 'package:trading_app/core/options_portfolio/local_options_portfolio_repository.dart';
@@ -152,6 +154,20 @@ void main() {
           state: optionsState,
           child: MaterialApp(home: const OptionPositionEditorScreen()),
         ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(
+      InsightsScope(
+        state: InsightsState(
+          journalState: journalState,
+          paperTradingState: paperState,
+          optionsState: optionsState,
+          marketState: marketState,
+        ),
+        child: const MaterialApp(home: InsightsScreen()),
       ),
     );
     await tester.pumpAndSettle();

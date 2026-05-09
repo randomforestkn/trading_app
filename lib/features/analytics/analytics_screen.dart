@@ -19,6 +19,7 @@ import '../../core/widgets/empty_state_view.dart';
 import '../../core/widgets/mini_trend_chart.dart';
 import '../../core/widgets/section_header.dart';
 import '../journal/journal_screen.dart';
+import '../insights/insights_screen.dart';
 import '../options_portfolio/options_portfolio_screen.dart';
 import '../strategy_simulator/strategy_simulator_screen.dart';
 
@@ -90,6 +91,31 @@ class AnalyticsScreen extends StatelessWidget {
                   context,
                 ).pushNamed(StrategySimulatorScreen.routeName),
                 icon: Icons.tune,
+                label: 'Open',
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        AppCard(
+          padding: const EdgeInsets.all(16),
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              const SizedBox(
+                width: 240,
+                child: Text(
+                  'View trader insights',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
+              ),
+              AppSecondaryButton(
+                onPressed: () =>
+                    Navigator.of(context).pushNamed(InsightsScreen.routeName),
+                icon: Icons.insights_outlined,
                 label: 'Open',
               ),
             ],

@@ -12,11 +12,18 @@ class AppConfig {
   static const simulatedPriceMovementMin = -0.02;
   static const simulatedPriceMovementMax = 0.02;
   static const analyticsConcentrationThreshold = 0.40;
+  static const insightsHighRiskRatingThreshold = 4;
+  static const insightsRepeatedLossThreshold = 2;
+  static const insightsPremiumConcentrationThreshold = 0.40;
+  static const insightsExpirationClusterWindowDays = 14;
+  static const insightsExpirationClusterThreshold = 3;
 
   static const paperTradingDisclaimer =
       'Paper trading only - no real money involved.';
   static const simulatedPricesDisclaimer =
       'Prices are simulated demo data and are not suitable for real trading decisions.';
+  static const insightsDisclaimer =
+      'Insights are rule-based and educational only.';
   static const demoAuthDisclaimer =
       'Demo auth only - no real account is created.';
   static const demoUserId = 'demo-user';

@@ -13,6 +13,7 @@ import '../core/journal/journal_repository.dart';
 import '../core/journal/local_journal_repository.dart';
 import '../core/journal/journal_state.dart';
 import '../core/journal/journal_store.dart';
+import '../core/insights/insights_state.dart';
 import '../core/options_portfolio/local_options_portfolio_repository.dart';
 import '../core/options_portfolio/options_portfolio_repository.dart';
 import '../core/options_portfolio/options_portfolio_state.dart';
@@ -24,6 +25,7 @@ import '../core/utils/app_logger.dart';
 import '../features/activity/activity_screen.dart';
 import '../features/analytics/analytics_screen.dart';
 import '../features/home/home_screen.dart';
+import '../features/insights/insights_screen.dart';
 import '../features/journal/journal_screen.dart';
 import '../features/learn/learn_screen.dart';
 import '../features/options_portfolio/options_portfolio_screen.dart';
@@ -62,8 +64,9 @@ class _TradingAppState extends State<TradingApp> {
   PaperTradingState? _paperTradingState;
   JournalState? _journalState;
   OptionsPortfolioState? _optionsPortfolioState;
+  InsightsState? _insightsState;
   late final Future<void> _authRestoreFuture;
-  late final Future<PaperTradingState> _startupFuture;
+  late final Future<_TradingStartupBundle> _startupFuture;
 
   @override
   void initState() {
@@ -106,16 +109,21 @@ class _TradingAppState extends State<TradingApp> {
     _marketState.dispose();
     _paperTradingState?.dispose();
     _journalState?.dispose();
+    _insightsState?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<PaperTradingState>(
+    return FutureBuilder<_TradingStartupBundle>(
       future: _startupFuture,
       builder: (context, snapshot) {
         if (snapshot.hasData) {
-          _paperTradingState = snapshot.data;
+          final bundle = snapshot.data!;
+          _paperTradingState = bundle.paperTradingState;
+          _journalState = bundle.journalState;
+          _optionsPortfolioState = bundle.optionsPortfolioState;
+          _insightsState ??= bundle.insightsState;
           return AuthScope(
             state: _authState,
             child: PaperTradingScope(
@@ -123,10 +131,13 @@ class _TradingAppState extends State<TradingApp> {
               child: MarketScope(
                 state: _marketState,
                 child: JournalScope(
-                  state: _journalState ?? JournalState(),
+                  state: _journalState!,
                   child: OptionsPortfolioScope(
-                    state: _optionsPortfolioState ?? OptionsPortfolioState(),
-                    child: _buildMaterialApp(const TradingShell()),
+                    state: _optionsPortfolioState!,
+                    child: InsightsScope(
+                      state: _insightsState!,
+                      child: _buildMaterialApp(const TradingShell()),
+                    ),
                   ),
                 ),
               ),
@@ -151,13 +162,24 @@ class _TradingAppState extends State<TradingApp> {
     );
   }
 
-  Future<PaperTradingState> _restoreStartupState() async {
+  Future<_TradingStartupBundle> _restoreStartupState() async {
     await _authRestoreFuture;
     _journalState = await _journalStateFuture;
     _optionsPortfolioState = await _optionsPortfolioStateFuture;
     final paperTradingState = await _paperTradingStateFuture;
     await _marketState.loadAssets();
-    return paperTradingState;
+    _insightsState = InsightsState(
+      journalState: _journalState!,
+      paperTradingState: paperTradingState,
+      optionsState: _optionsPortfolioState!,
+      marketState: _marketState,
+    );
+    return _TradingStartupBundle(
+      paperTradingState: paperTradingState,
+      journalState: _journalState!,
+      optionsPortfolioState: _optionsPortfolioState!,
+      insightsState: _insightsState!,
+    );
   }
 
   Widget _buildMaterialApp(Widget home) {
@@ -169,6 +191,7 @@ class _TradingAppState extends State<TradingApp> {
       routes: {
         ActivityScreen.routeName: (_) => const ActivityScreen(),
         AnalyticsScreen.routeName: (_) => const AnalyticsScreen(),
+        InsightsScreen.routeName: (_) => const InsightsScreen(),
         JournalScreen.routeName: (_) => const JournalScreen(),
         OptionsPortfolioScreen.routeName: (_) => const OptionsPortfolioScreen(),
         StrategySimulatorScreen.routeName: (_) =>
@@ -178,6 +201,20 @@ class _TradingAppState extends State<TradingApp> {
       home: home,
     );
   }
+}
+
+class _TradingStartupBundle {
+  const _TradingStartupBundle({
+    required this.paperTradingState,
+    required this.journalState,
+    required this.optionsPortfolioState,
+    required this.insightsState,
+  });
+
+  final PaperTradingState paperTradingState;
+  final JournalState journalState;
+  final OptionsPortfolioState optionsPortfolioState;
+  final InsightsState insightsState;
 }
 
 class _StartupScreen extends StatelessWidget {
