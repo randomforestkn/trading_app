@@ -46,10 +46,11 @@ class SettingsScreen extends StatelessWidget {
           subtitle:
               'Remove activity records without changing cash or positions.',
           actionLabel: 'Clear',
+          destructive: true,
           onPressed: () => _confirmClearHistory(context, paperState),
         ),
         const SectionHeader('App information'),
-        const _AppInfoCard(),
+        _AppInfoCard(marketState: marketState),
       ],
     );
   }
@@ -111,6 +112,10 @@ class SettingsScreen extends StatelessWidget {
             child: const Text('Cancel'),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.danger,
+              foregroundColor: Colors.white,
+            ),
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Clear history'),
           ),
@@ -174,7 +179,7 @@ class _AccountCard extends StatelessWidget {
               OutlinedButton.icon(
                 onPressed: authState.isLoading
                     ? null
-                    : () => _signOut(context, authState),
+                    : () => _confirmSignOut(context, authState),
                 icon: const Icon(Icons.logout),
                 label: const Text('Sign out'),
               ),
@@ -210,7 +215,38 @@ class _AccountCard extends StatelessWidget {
     ).showSnackBar(const SnackBar(content: Text('Signed in to demo account.')));
   }
 
-  Future<void> _signOut(BuildContext context, AuthState authState) async {
+  Future<void> _confirmSignOut(
+    BuildContext context,
+    AuthState authState,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sign out of demo account?'),
+        content: const Text(
+          'This will end the local demo session only. Paper trading data will stay on this device.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.danger,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Sign out'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
     await authState.signOut();
     if (!context.mounted) {
       return;
@@ -333,7 +369,9 @@ class _SettingsActionCard extends StatelessWidget {
 }
 
 class _AppInfoCard extends StatelessWidget {
-  const _AppInfoCard();
+  const _AppInfoCard({required this.marketState});
+
+  final MarketState marketState;
 
   @override
   Widget build(BuildContext context) {
@@ -342,19 +380,30 @@ class _AppInfoCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            _SettingsRow(label: 'App name', value: AppConfig.appName),
-            Divider(height: 22),
-            _SettingsRow(label: 'Version', value: AppConfig.appVersionLabel),
-            Divider(height: 22),
-            _SettingsRow(label: 'Build mode', value: AppConfig.buildModeLabel),
-            Divider(height: 22),
-            Text(
+          children: [
+            const _SettingsRow(label: 'App name', value: AppConfig.appName),
+            const Divider(height: 22),
+            const _SettingsRow(
+              label: 'Version',
+              value: AppConfig.appVersionLabel,
+            ),
+            const Divider(height: 22),
+            const _SettingsRow(
+              label: 'Build mode',
+              value: AppConfig.buildModeLabel,
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Market mode',
+              value: marketState.dataMode.label,
+            ),
+            const Divider(height: 22),
+            const Text(
               AppConfig.paperTradingDisclaimer,
               style: TextStyle(fontWeight: FontWeight.w900),
             ),
-            SizedBox(height: 6),
-            Text(
+            const SizedBox(height: 6),
+            const Text(
               AppConfig.simulatedPricesDisclaimer,
               style: TextStyle(color: Colors.white60),
             ),

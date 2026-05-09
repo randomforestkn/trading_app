@@ -83,7 +83,7 @@ class PortfolioScreen extends StatelessWidget {
         return AlertDialog(
           title: const Text('Reset paper portfolio?'),
           content: const Text(
-            'This will clear persisted order history and restore the default mock cash balance and starting positions. This cannot be undone.',
+            'This restores the default mock account, including cash and starting positions, and clears order history. This cannot be undone.',
           ),
           actions: [
             TextButton(
@@ -96,7 +96,7 @@ class PortfolioScreen extends StatelessWidget {
                 foregroundColor: Colors.white,
               ),
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Reset portfolio'),
+              child: const Text('Reset'),
             ),
           ],
         );

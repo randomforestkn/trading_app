@@ -47,11 +47,24 @@ class PaperTradingState extends ChangeNotifier {
     PaperTradingRepository? repository,
   }) async {
     final accountRepository = repository ?? const LocalPaperTradingRepository();
-    final result = await accountRepository.loadAccount();
+    late final AppResult<PaperTradingAccount> result;
+    try {
+      result = await accountRepository.loadAccount();
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'Paper trading account load threw unexpectedly',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return PaperTradingState(repository: accountRepository)
+        .._lastError = 'Unable to restore paper trading account.';
+    }
     return result.when(
       success: (account) =>
           PaperTradingState.fromAccount(account, repository: accountRepository),
-      failure: (_) => PaperTradingState(repository: accountRepository),
+      failure: (message) =>
+          PaperTradingState(repository: accountRepository)
+            .._lastError = message,
     );
   }
 
@@ -219,7 +232,20 @@ class PaperTradingState extends ChangeNotifier {
 
   Future<void> reset() async {
     _setSaving(true);
-    final result = await _repository.resetAccount();
+    late final AppResult<PaperTradingAccount> result;
+    try {
+      result = await _repository.resetAccount();
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'Paper account reset threw unexpectedly',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      _lastError = 'Unable to reset paper trading account.';
+      _setSaving(false);
+      notifyListeners();
+      return;
+    }
     result.when(
       success: (account) {
         _applyAccount(account);
@@ -236,7 +262,20 @@ class PaperTradingState extends ChangeNotifier {
 
   Future<void> clearOrderHistory() async {
     _setSaving(true);
-    final result = await _repository.clearOrderHistory(_toAccount());
+    late final AppResult<PaperTradingAccount> result;
+    try {
+      result = await _repository.clearOrderHistory(_toAccount());
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'Clear order history threw unexpectedly',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      _lastError = 'Unable to clear order history.';
+      _setSaving(false);
+      notifyListeners();
+      return;
+    }
     result.when(
       success: (account) {
         _applyAccount(account);
@@ -281,7 +320,19 @@ class PaperTradingState extends ChangeNotifier {
 
   Future<AppResult<void>> _saveAccount(PaperTradingAccount account) async {
     _setSaving(true);
-    final result = await _repository.saveAccount(account);
+    late final AppResult<void> result;
+    try {
+      result = await _repository.saveAccount(account);
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'Paper account save threw unexpectedly',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      _lastError = 'Unable to save paper trading account.';
+      _setSaving(false);
+      return const AppFailure('Unable to save paper trading account.');
+    }
     result.when(
       success: (_) {
         _lastError = null;

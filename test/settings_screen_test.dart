@@ -70,6 +70,8 @@ void main() {
     await tester.pumpWidget(_settingsHarness(paperState, authState: authState));
     await tester.tap(find.text('Sign out'));
     await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Sign out'));
+    await tester.pumpAndSettle();
 
     expect(authState.isAuthenticated, isFalse);
     expect(paperState.cashBalance, cashBeforeSignOut);

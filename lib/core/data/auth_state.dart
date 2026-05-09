@@ -1,9 +1,11 @@
 import 'package:flutter/widgets.dart';
 
 import '../models/app_user.dart';
-import '../utils/app_logger.dart';
+import '../models/auth_session.dart';
+import 'app_result.dart';
 import 'auth_repository.dart';
 import 'local_demo_auth_repository.dart';
+import '../utils/app_logger.dart';
 
 class AuthState extends ChangeNotifier {
   AuthState({AuthRepository? repository})
@@ -24,7 +26,19 @@ class AuthState extends ChangeNotifier {
 
   Future<void> restoreSession() async {
     _setLoading(true);
-    final result = await _repository.restoreSession();
+    late final AppResult<AuthSession?> result;
+    try {
+      result = await _repository.restoreSession();
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'Auth session restore threw unexpectedly',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      _errorMessage = 'Unable to restore demo session.';
+      _setLoading(false);
+      return;
+    }
     result.when(
       success: (session) {
         _currentUser = session?.user;
@@ -40,7 +54,19 @@ class AuthState extends ChangeNotifier {
 
   Future<void> signInDemo() async {
     _setLoading(true);
-    final result = await _repository.signInDemo();
+    late final AppResult<AuthSession> result;
+    try {
+      result = await _repository.signInDemo();
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'Demo sign-in threw unexpectedly',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      _errorMessage = 'Unable to sign in to demo account.';
+      _setLoading(false);
+      return;
+    }
     result.when(
       success: (session) {
         _currentUser = session.user;
@@ -56,7 +82,19 @@ class AuthState extends ChangeNotifier {
 
   Future<void> signOut() async {
     _setLoading(true);
-    final result = await _repository.signOut();
+    late final AppResult<void> result;
+    try {
+      result = await _repository.signOut();
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'Demo sign-out threw unexpectedly',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      _errorMessage = 'Unable to sign out of demo account.';
+      _setLoading(false);
+      return;
+    }
     result.when(
       success: (_) {
         _currentUser = null;

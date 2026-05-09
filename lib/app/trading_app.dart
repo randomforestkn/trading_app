@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 
 import '../core/config/app_config.dart';
+import '../core/data/auth_repository.dart';
 import '../core/data/auth_state.dart';
 import '../core/data/auth_store.dart';
 import '../core/data/local_demo_auth_repository.dart';
 import '../core/data/local_paper_trading_repository.dart';
+import '../core/data/market_repository.dart';
 import '../core/data/market_repository_factory.dart';
 import '../core/data/market_state.dart';
 import '../core/data/paper_trading_state.dart';
+import '../core/data/paper_trading_repository.dart';
 import '../core/data/paper_trading_store.dart';
 import '../core/utils/app_logger.dart';
 import '../features/activity/activity_screen.dart';
@@ -19,28 +22,51 @@ import '../features/watchlist/watchlist_screen.dart';
 import 'theme/app_theme.dart';
 
 class TradingApp extends StatefulWidget {
-  const TradingApp({super.key});
+  const TradingApp({
+    super.key,
+    this.authRepository,
+    this.marketRepository,
+    this.paperTradingRepository,
+  });
+
+  final AuthRepository? authRepository;
+  final MarketRepository? marketRepository;
+  final PaperTradingRepository? paperTradingRepository;
 
   @override
   State<TradingApp> createState() => _TradingAppState();
 }
 
 class _TradingAppState extends State<TradingApp> {
-  late final AuthState _authState = AuthState(
-    repository: LocalDemoAuthRepository(store: SharedPreferencesAuthStore()),
-  );
-  late final MarketState _marketState = MarketState(
-    repository: MarketRepositoryFactory.buildDefault(),
-  );
-  late final Future<PaperTradingState> _paperTradingStateFuture =
-      PaperTradingState.load(
-        repository: LocalPaperTradingRepository(
-          store: SharedPreferencesPaperTradingStore(),
-        ),
-      );
+  late final AuthState _authState;
+  late final MarketState _marketState;
+  late final Future<PaperTradingState> _paperTradingStateFuture;
   PaperTradingState? _paperTradingState;
-  late final Future<void> _authRestoreFuture = _authState.restoreSession();
-  late final Future<PaperTradingState> _startupFuture = _restoreStartupState();
+  late final Future<void> _authRestoreFuture;
+  late final Future<PaperTradingState> _startupFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _authState = AuthState(
+      repository:
+          widget.authRepository ??
+          LocalDemoAuthRepository(store: SharedPreferencesAuthStore()),
+    );
+    _marketState = MarketState(
+      repository:
+          widget.marketRepository ?? MarketRepositoryFactory.buildDefault(),
+    );
+    _paperTradingStateFuture = PaperTradingState.load(
+      repository:
+          widget.paperTradingRepository ??
+          LocalPaperTradingRepository(
+            store: SharedPreferencesPaperTradingStore(),
+          ),
+    );
+    _authRestoreFuture = _authState.restoreSession();
+    _startupFuture = _restoreStartupState();
+  }
 
   @override
   void dispose() {
@@ -88,7 +114,9 @@ class _TradingAppState extends State<TradingApp> {
 
   Future<PaperTradingState> _restoreStartupState() async {
     await _authRestoreFuture;
-    return _paperTradingStateFuture;
+    final paperTradingState = await _paperTradingStateFuture;
+    await _marketState.loadAssets();
+    return paperTradingState;
   }
 
   Widget _buildMaterialApp(Widget home) {

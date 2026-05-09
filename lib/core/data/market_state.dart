@@ -110,7 +110,19 @@ class MarketState extends ChangeNotifier {
 
   Future<void> loadAssets() async {
     _setLoading(true);
-    final result = await _repository.loadAssets();
+    late final AppResult<List<TradingAsset>> result;
+    try {
+      result = await _repository.loadAssets();
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'Market asset load threw unexpectedly',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      _errorMessage = 'Unable to load market data.';
+      _setLoading(false);
+      return;
+    }
     result.when(
       success: (assets) {
         _assetsBySymbol.clear();
@@ -130,7 +142,19 @@ class MarketState extends ChangeNotifier {
 
   Future<AppResult<void>> refreshPrices() async {
     _setLoading(true);
-    final result = await _repository.refreshPrices(assets);
+    late final AppResult<List<TradingAsset>> result;
+    try {
+      result = await _repository.refreshPrices(assets);
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'Market price refresh threw unexpectedly',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      _errorMessage = 'Unable to refresh market data.';
+      _setLoading(false);
+      return const AppFailure('Unable to refresh market data.');
+    }
     late final AppResult<void> operationResult;
     result.when(
       success: (assets) {
