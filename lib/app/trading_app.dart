@@ -9,6 +9,14 @@ import '../core/data/local_paper_trading_repository.dart';
 import '../core/data/market_repository.dart';
 import '../core/data/market_repository_factory.dart';
 import '../core/data/market_state.dart';
+import '../core/journal/journal_repository.dart';
+import '../core/journal/local_journal_repository.dart';
+import '../core/journal/journal_state.dart';
+import '../core/journal/journal_store.dart';
+import '../core/options_portfolio/local_options_portfolio_repository.dart';
+import '../core/options_portfolio/options_portfolio_repository.dart';
+import '../core/options_portfolio/options_portfolio_state.dart';
+import '../core/options_portfolio/options_portfolio_store.dart';
 import '../core/data/paper_trading_state.dart';
 import '../core/data/paper_trading_repository.dart';
 import '../core/data/paper_trading_store.dart';
@@ -16,7 +24,9 @@ import '../core/utils/app_logger.dart';
 import '../features/activity/activity_screen.dart';
 import '../features/analytics/analytics_screen.dart';
 import '../features/home/home_screen.dart';
+import '../features/journal/journal_screen.dart';
 import '../features/learn/learn_screen.dart';
+import '../features/options_portfolio/options_portfolio_screen.dart';
 import '../features/portfolio/portfolio_screen.dart';
 import '../features/strategy_simulator/strategy_simulator_screen.dart';
 import '../features/settings/settings_screen.dart';
@@ -29,11 +39,15 @@ class TradingApp extends StatefulWidget {
     this.authRepository,
     this.marketRepository,
     this.paperTradingRepository,
+    this.journalRepository,
+    this.optionsPortfolioRepository,
   });
 
   final AuthRepository? authRepository;
   final MarketRepository? marketRepository;
   final PaperTradingRepository? paperTradingRepository;
+  final JournalRepository? journalRepository;
+  final OptionsPortfolioRepository? optionsPortfolioRepository;
 
   @override
   State<TradingApp> createState() => _TradingAppState();
@@ -43,7 +57,11 @@ class _TradingAppState extends State<TradingApp> {
   late final AuthState _authState;
   late final MarketState _marketState;
   late final Future<PaperTradingState> _paperTradingStateFuture;
+  late final Future<JournalState> _journalStateFuture;
+  late final Future<OptionsPortfolioState> _optionsPortfolioStateFuture;
   PaperTradingState? _paperTradingState;
+  JournalState? _journalState;
+  OptionsPortfolioState? _optionsPortfolioState;
   late final Future<void> _authRestoreFuture;
   late final Future<PaperTradingState> _startupFuture;
 
@@ -66,6 +84,18 @@ class _TradingAppState extends State<TradingApp> {
             store: SharedPreferencesPaperTradingStore(),
           ),
     );
+    _journalStateFuture = JournalState.load(
+      repository:
+          widget.journalRepository ??
+          LocalJournalRepository(store: SharedPreferencesJournalStore()),
+    );
+    _optionsPortfolioStateFuture = OptionsPortfolioState.load(
+      repository:
+          widget.optionsPortfolioRepository ??
+          LocalOptionsPortfolioRepository(
+            store: SharedPreferencesOptionsPortfolioStore(),
+          ),
+    );
     _authRestoreFuture = _authState.restoreSession();
     _startupFuture = _restoreStartupState();
   }
@@ -75,6 +105,7 @@ class _TradingAppState extends State<TradingApp> {
     _authState.dispose();
     _marketState.dispose();
     _paperTradingState?.dispose();
+    _journalState?.dispose();
     super.dispose();
   }
 
@@ -91,7 +122,13 @@ class _TradingAppState extends State<TradingApp> {
               state: _paperTradingState!,
               child: MarketScope(
                 state: _marketState,
-                child: _buildMaterialApp(const TradingShell()),
+                child: JournalScope(
+                  state: _journalState ?? JournalState(),
+                  child: OptionsPortfolioScope(
+                    state: _optionsPortfolioState ?? OptionsPortfolioState(),
+                    child: _buildMaterialApp(const TradingShell()),
+                  ),
+                ),
               ),
             ),
           );
@@ -116,6 +153,8 @@ class _TradingAppState extends State<TradingApp> {
 
   Future<PaperTradingState> _restoreStartupState() async {
     await _authRestoreFuture;
+    _journalState = await _journalStateFuture;
+    _optionsPortfolioState = await _optionsPortfolioStateFuture;
     final paperTradingState = await _paperTradingStateFuture;
     await _marketState.loadAssets();
     return paperTradingState;
@@ -130,6 +169,8 @@ class _TradingAppState extends State<TradingApp> {
       routes: {
         ActivityScreen.routeName: (_) => const ActivityScreen(),
         AnalyticsScreen.routeName: (_) => const AnalyticsScreen(),
+        JournalScreen.routeName: (_) => const JournalScreen(),
+        OptionsPortfolioScreen.routeName: (_) => const OptionsPortfolioScreen(),
         StrategySimulatorScreen.routeName: (_) =>
             const StrategySimulatorScreen(),
         SettingsScreen.routeName: (_) => const SettingsScreen(),

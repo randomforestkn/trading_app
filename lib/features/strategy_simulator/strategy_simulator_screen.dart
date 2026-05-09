@@ -5,7 +5,9 @@ import '../../core/analytics/options_analytics.dart';
 import '../../core/config/app_config.dart';
 import '../../core/data/market_state.dart';
 import '../../core/data/paper_trading_state.dart';
+import '../../core/journal/journal_entry.dart';
 import '../../core/models/asset.dart';
+import '../../core/strategies/option_contract.dart';
 import '../../core/strategies/cash_secured_put_simulator.dart';
 import '../../core/strategies/covered_call_simulator.dart';
 import '../../core/strategies/option_strategy.dart';
@@ -18,6 +20,9 @@ import '../../core/widgets/app_page.dart';
 import '../../core/widgets/app_pill_chip.dart';
 import '../../core/widgets/app_stat_tile.dart';
 import '../../core/widgets/section_header.dart';
+import '../journal/journal_editor_screen.dart';
+import '../options_portfolio/option_position_editor_screen.dart';
+import '../options_portfolio/options_portfolio_screen.dart';
 
 class StrategySimulatorScreen extends StatefulWidget {
   const StrategySimulatorScreen({super.key});
@@ -160,6 +165,27 @@ class _StrategySimulatorScreenState extends State<StrategySimulatorScreen> {
           label: 'Run simulation',
           icon: Icons.play_arrow_rounded,
           onPressed: _runSimulation,
+        ),
+        const SizedBox(height: 12),
+        AppSecondaryButton(
+          label: 'Save strategy note',
+          icon: Icons.note_add_outlined,
+          onPressed: () =>
+              _openStrategyNote(context, selectedAsset, currentPrice),
+        ),
+        const SizedBox(height: 10),
+        AppSecondaryButton(
+          label: 'Track option position',
+          icon: Icons.receipt_long_outlined,
+          onPressed: () =>
+              _openOptionPositionEditor(context, selectedAsset, currentPrice),
+        ),
+        const SizedBox(height: 10),
+        AppSecondaryButton(
+          label: 'Open options portfolio',
+          icon: Icons.arrow_forward_rounded,
+          onPressed: () =>
+              Navigator.of(context).pushNamed(OptionsPortfolioScreen.routeName),
         ),
         if (_errorMessage != null) ...[
           const SizedBox(height: 12),
@@ -471,6 +497,94 @@ class _StrategySimulatorScreenState extends State<StrategySimulatorScreen> {
           _errorMessage = result.validationWarning;
         });
     }
+  }
+
+  void _openStrategyNote(
+    BuildContext context,
+    TradingAsset asset,
+    double currentPrice,
+  ) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => JournalEditorScreen(
+          prefillTitle: '${_strategy.label} note - ${asset.symbol}',
+          prefillBody: _strategyBody(asset, currentPrice),
+          prefillLinkedAssetSymbol: asset.symbol,
+          prefillLinkedStrategy: _journalStrategy(),
+          prefillMood: JournalMood.disciplined,
+          prefillOutcome: JournalOutcome.open,
+          prefillTags: const ['strategy', 'options'],
+        ),
+      ),
+    );
+  }
+
+  void _openOptionPositionEditor(
+    BuildContext context,
+    TradingAsset asset,
+    double currentPrice,
+  ) {
+    final strategy = _strategy == OptionStrategy.wheel
+        ? OptionStrategy.cashSecuredPut
+        : _strategy;
+    final optionType = switch (strategy) {
+      OptionStrategy.coveredCall => OptionType.call,
+      OptionStrategy.cashSecuredPut => OptionType.put,
+      OptionStrategy.wheel => OptionType.put,
+    };
+    final strike = switch (_strategy) {
+      OptionStrategy.coveredCall => _parseDouble(_callStrikeController.text),
+      OptionStrategy.cashSecuredPut => _parseDouble(_putStrikeController.text),
+      OptionStrategy.wheel => _parseDouble(_putStrikeController.text),
+    };
+    final premium = switch (_strategy) {
+      OptionStrategy.coveredCall => _parseDouble(_callPremiumController.text),
+      OptionStrategy.cashSecuredPut => _parseDouble(_putPremiumController.text),
+      OptionStrategy.wheel => _parseDouble(_putPremiumController.text),
+    };
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => OptionPositionEditorScreen(
+          prefillUnderlyingSymbol: asset.symbol,
+          prefillUnderlyingName: asset.name,
+          prefillOptionType: optionType,
+          prefillSide: OptionSide.sell,
+          prefillStrikePrice: strike,
+          prefillPremium: premium,
+          prefillContractsCount: _parseInt(_contractsController.text),
+          prefillExpirationDate:
+              DateTime.tryParse(_expiryController.text) ??
+              DateTime.now().add(const Duration(days: 30)),
+          prefillLinkedStrategy: strategy,
+          prefillNotes:
+              'Strategy simulation from ${asset.symbol} at ${currentPrice.toStringAsFixed(2)}',
+        ),
+      ),
+    );
+  }
+
+  String _strategyBody(TradingAsset asset, double currentPrice) {
+    final buffer = StringBuffer();
+    buffer.writeln('Strategy: ${_strategy.label}');
+    buffer.writeln(
+      'Underlying: ${asset.symbol} at \$${currentPrice.toStringAsFixed(2)}',
+    );
+    if (_result != null) {
+      buffer.writeln('Simulation completed successfully.');
+    } else {
+      buffer.writeln(
+        'Record your assumptions, risk controls, and follow-up plan.',
+      );
+    }
+    return buffer.toString().trim();
+  }
+
+  JournalStrategyType _journalStrategy() {
+    return switch (_strategy) {
+      OptionStrategy.coveredCall => JournalStrategyType.coveredCall,
+      OptionStrategy.cashSecuredPut => JournalStrategyType.cashSecuredPut,
+      OptionStrategy.wheel => JournalStrategyType.wheel,
+    };
   }
 }
 

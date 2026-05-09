@@ -9,3 +9,12 @@ extension OptionStrategyLabel on OptionStrategy {
     };
   }
 }
+
+OptionStrategy? optionStrategyFromName(String? value) {
+  return switch (value) {
+    'coveredCall' => OptionStrategy.coveredCall,
+    'cashSecuredPut' => OptionStrategy.cashSecuredPut,
+    'wheel' => OptionStrategy.wheel,
+    _ => null,
+  };
+}

@@ -7,6 +7,8 @@ import '../../core/analytics/trading_analytics.dart';
 import '../../core/config/app_config.dart';
 import '../../core/data/market_state.dart';
 import '../../core/data/paper_trading_state.dart';
+import '../../core/options_portfolio/options_income_analytics.dart';
+import '../../core/options_portfolio/options_portfolio_state.dart';
 import '../../core/models/paper_order.dart';
 import '../../core/widgets/app_buttons.dart';
 import '../../core/widgets/app_card.dart';
@@ -16,6 +18,8 @@ import '../../core/widgets/app_stat_tile.dart';
 import '../../core/widgets/empty_state_view.dart';
 import '../../core/widgets/mini_trend_chart.dart';
 import '../../core/widgets/section_header.dart';
+import '../journal/journal_screen.dart';
+import '../options_portfolio/options_portfolio_screen.dart';
 import '../strategy_simulator/strategy_simulator_screen.dart';
 
 class AnalyticsScreen extends StatelessWidget {
@@ -27,6 +31,7 @@ class AnalyticsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final marketState = MarketScope.of(context);
     final paperState = PaperTradingScope.of(context);
+    final optionsState = OptionsPortfolioScope.of(context);
     final portfolio = TradingAnalytics.portfolio(
       tradingState: paperState,
       marketState: marketState,
@@ -34,6 +39,10 @@ class AnalyticsScreen extends StatelessWidget {
     final activity = TradingAnalytics.activity(tradingState: paperState);
     final performance = TradingAnalytics.performance(
       tradingState: paperState,
+      marketState: marketState,
+    );
+    final optionsAnalytics = OptionsIncomeAnalytics.fromState(
+      state: optionsState,
       marketState: marketState,
     );
     final hasContent =
@@ -56,6 +65,11 @@ class AnalyticsScreen extends StatelessWidget {
           orders: paperState.orders,
         ),
         const SizedBox(height: 12),
+        _OptionsIncomeCard(
+          analytics: optionsAnalytics,
+          isLoading: optionsState.isLoading,
+        ),
+        const SizedBox(height: 12),
         AppCard(
           padding: const EdgeInsets.all(16),
           child: Wrap(
@@ -76,6 +90,57 @@ class AnalyticsScreen extends StatelessWidget {
                   context,
                 ).pushNamed(StrategySimulatorScreen.routeName),
                 icon: Icons.tune,
+                label: 'Open',
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        AppCard(
+          padding: const EdgeInsets.all(16),
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              const SizedBox(
+                width: 240,
+                child: Text(
+                  'Open trading journal',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
+              ),
+              AppSecondaryButton(
+                onPressed: () =>
+                    Navigator.of(context).pushNamed(JournalScreen.routeName),
+                icon: Icons.menu_book_outlined,
+                label: 'Open',
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        AppCard(
+          padding: const EdgeInsets.all(16),
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              const SizedBox(
+                width: 240,
+                child: Text(
+                  'Open options portfolio',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
+              ),
+              AppSecondaryButton(
+                onPressed: () => Navigator.of(
+                  context,
+                ).pushNamed(OptionsPortfolioScreen.routeName),
+                icon: Icons.receipt_long_outlined,
                 label: 'Open',
               ),
             ],
@@ -110,6 +175,81 @@ class AnalyticsScreen extends StatelessWidget {
           _PositionInsightsCard(portfolio: portfolio),
         ],
       ],
+    );
+  }
+}
+
+class _OptionsIncomeCard extends StatelessWidget {
+  const _OptionsIncomeCard({required this.analytics, required this.isLoading});
+
+  final OptionsIncomeAnalytics analytics;
+  final bool isLoading;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Options income',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
+              ),
+              AppSecondaryButton(
+                onPressed: () => Navigator.of(
+                  context,
+                ).pushNamed(OptionsPortfolioScreen.routeName),
+                icon: Icons.arrow_forward_rounded,
+                label: 'Open',
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              SizedBox(
+                width: 170,
+                child: AppStatTile(
+                  label: 'Premium collected',
+                  value: _money(analytics.totalPremiumCollected),
+                ),
+              ),
+              SizedBox(
+                width: 170,
+                child: AppStatTile(
+                  label: 'Open premium',
+                  value: _money(analytics.openPremiumAtRisk),
+                ),
+              ),
+              SizedBox(
+                width: 170,
+                child: AppStatTile(
+                  label: 'Upcoming expirations',
+                  value: analytics.upcomingExpirations.length.toString(),
+                ),
+              ),
+              SizedBox(
+                width: 170,
+                child: AppStatTile(
+                  label: 'Avg premium/trade',
+                  value: _money(analytics.averagePremiumPerTrade),
+                ),
+              ),
+            ],
+          ),
+          if (isLoading) ...[
+            const SizedBox(height: 12),
+            const LinearProgressIndicator(),
+          ],
+        ],
+      ),
     );
   }
 }

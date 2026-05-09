@@ -22,6 +22,8 @@ class AppConfig {
   static const demoUserId = 'demo-user';
   static const demoUserEmail = 'demo@cleartrade.local';
   static const demoUserDisplayName = 'Demo Trader';
+  static const journalStorageKey = 'journal_entries_v1';
+  static const optionsPortfolioStorageKey = 'options_portfolio_v1';
 
   static String marketModeLabel(MarketDataMode mode) {
     return switch (mode) {

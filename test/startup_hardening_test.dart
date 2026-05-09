@@ -3,12 +3,16 @@ import 'package:trading_app/app/trading_app.dart';
 import 'package:trading_app/core/data/app_result.dart';
 import 'package:trading_app/core/data/auth_repository.dart';
 import 'package:trading_app/core/data/market_repository.dart';
+import 'package:trading_app/core/journal/journal_entry.dart';
+import 'package:trading_app/core/journal/journal_repository.dart';
 import 'package:trading_app/core/data/paper_trading_account.dart';
 import 'package:trading_app/core/data/paper_trading_repository.dart';
 import 'package:trading_app/core/models/app_user.dart';
 import 'package:trading_app/core/models/auth_session.dart';
 import 'package:trading_app/core/models/asset.dart';
 import 'package:trading_app/core/config/app_config.dart';
+import 'package:trading_app/core/options_portfolio/options_portfolio_repository.dart';
+import 'package:trading_app/core/options_portfolio/options_portfolio_account.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -20,6 +24,8 @@ void main() {
         authRepository: _ThrowingAuthRepository(),
         marketRepository: _FailingMarketRepository(),
         paperTradingRepository: _ThrowingPaperTradingRepository(),
+        journalRepository: _ThrowingJournalRepository(),
+        optionsPortfolioRepository: _ThrowingOptionsPortfolioRepository(),
       ),
     );
     await tester.pumpAndSettle();
@@ -103,5 +109,49 @@ class _FailingMarketRepository implements MarketRepository {
     List<TradingAsset> currentAssets,
   ) async {
     return const AppFailure('Unable to refresh market data.');
+  }
+}
+
+class _ThrowingJournalRepository implements JournalRepository {
+  const _ThrowingJournalRepository();
+
+  @override
+  Future<AppResult<List<JournalEntry>>> loadEntries() {
+    throw StateError('journal unavailable');
+  }
+
+  @override
+  Future<AppResult<void>> saveEntries(List<JournalEntry> entries) {
+    throw StateError('journal unavailable');
+  }
+
+  @override
+  Future<AppResult<void>> deleteEntry(String entryId) {
+    throw StateError('journal unavailable');
+  }
+
+  @override
+  Future<AppResult<void>> clearEntries() {
+    throw StateError('journal unavailable');
+  }
+}
+
+class _ThrowingOptionsPortfolioRepository
+    implements OptionsPortfolioRepository {
+  const _ThrowingOptionsPortfolioRepository();
+
+  @override
+  Future<AppResult<OptionsPortfolioAccount>> loadAccount() {
+    throw StateError('options unavailable');
+  }
+
+  @override
+  Future<AppResult<void>> saveAccount(OptionsPortfolioAccount account) {
+    throw StateError('options unavailable');
+  }
+
+  @override
+  Future<AppResult<OptionsPortfolioAccount>> resetAccount() {
+    throw StateError('options unavailable');
   }
 }

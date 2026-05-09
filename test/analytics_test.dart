@@ -9,6 +9,9 @@ import 'package:trading_app/core/data/paper_trading_store.dart';
 import 'package:trading_app/core/data/paper_trading_state.dart';
 import 'package:trading_app/core/models/paper_order.dart';
 import 'package:trading_app/core/models/portfolio_position.dart';
+import 'package:trading_app/core/options_portfolio/local_options_portfolio_repository.dart';
+import 'package:trading_app/core/options_portfolio/options_portfolio_state.dart';
+import 'package:trading_app/core/options_portfolio/options_portfolio_store.dart';
 import 'package:trading_app/features/analytics/analytics_screen.dart';
 
 void main() {
@@ -213,7 +216,14 @@ void main() {
         state: marketState,
         child: PaperTradingScope(
           state: paperState,
-          child: const MaterialApp(home: AnalyticsScreen()),
+          child: OptionsPortfolioScope(
+            state: OptionsPortfolioState(
+              repository: LocalOptionsPortfolioRepository(
+                store: MemoryOptionsPortfolioStore(),
+              ),
+            ),
+            child: const MaterialApp(home: AnalyticsScreen()),
+          ),
         ),
       ),
     );
@@ -232,7 +242,14 @@ void main() {
         state: marketState,
         child: PaperTradingScope(
           state: paperState,
-          child: const MaterialApp(home: AnalyticsScreen()),
+          child: OptionsPortfolioScope(
+            state: OptionsPortfolioState(
+              repository: LocalOptionsPortfolioRepository(
+                store: MemoryOptionsPortfolioStore(),
+              ),
+            ),
+            child: const MaterialApp(home: AnalyticsScreen()),
+          ),
         ),
       ),
     );
