@@ -5,6 +5,8 @@ import '../../core/config/app_config.dart';
 import '../../core/data/auth_state.dart';
 import '../../core/data/market_state.dart';
 import '../../core/data/paper_trading_state.dart';
+import '../../core/sync/sync_state.dart';
+import '../../core/sync/sync_status.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/section_header.dart';
 
@@ -51,6 +53,14 @@ class SettingsScreen extends StatelessWidget {
         ),
         const SectionHeader('App information'),
         _AppInfoCard(marketState: marketState),
+        const SectionHeader('Sync'),
+        _SyncCard(syncState: SyncScope.of(context)),
+        const SectionHeader('Diagnostics'),
+        _DiagnosticsCard(
+          marketState: marketState,
+          authState: authState,
+          syncState: SyncScope.of(context),
+        ),
       ],
     );
   }
@@ -133,6 +143,185 @@ class SettingsScreen extends StatelessWidget {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Order history cleared.')));
+  }
+}
+
+class _SyncCard extends StatelessWidget {
+  const _SyncCard({required this.syncState});
+
+  final SyncState syncState;
+
+  @override
+  Widget build(BuildContext context) {
+    final metadata = syncState.metadata;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _SettingsRow(label: 'Mode', value: metadata.syncMode.label),
+            const Divider(height: 22),
+            _SettingsRow(label: 'Status', value: syncState.status.label),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Pending operations',
+              value: syncState.pendingOperations.length.toString(),
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Last synced',
+              value: _formatDateTime(metadata.lastSyncedAt),
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Last attempt',
+              value: _formatDateTime(metadata.lastAttemptedAt),
+            ),
+            if (syncState.errorMessage != null) ...[
+              const Divider(height: 22),
+              Text(
+                syncState.errorMessage!,
+                style: const TextStyle(
+                  color: AppTheme.danger,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+            const SizedBox(height: 14),
+            FilledButton.icon(
+              onPressed: syncState.isSyncing
+                  ? null
+                  : () => _syncNow(context, syncState),
+              icon: syncState.isSyncing
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.sync),
+              label: const Text('Sync now'),
+            ),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: syncState.pendingOperations.isEmpty
+                  ? null
+                  : () => _confirmClearSynced(context, syncState),
+              icon: const Icon(Icons.cleaning_services_outlined),
+              label: const Text('Clear synced operations'),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              AppConfig.syncDisclaimer,
+              style: TextStyle(color: Colors.white60),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _syncNow(BuildContext context, SyncState syncState) async {
+    await syncState.syncNow();
+    if (!context.mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Sync status: ${syncState.status.label}.')),
+    );
+  }
+
+  Future<void> _confirmClearSynced(
+    BuildContext context,
+    SyncState syncState,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear synced operations?'),
+        content: const Text(
+          'This removes operations that have already been synced. Pending local changes will stay queued.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.danger,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Clear synced'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) {
+      return;
+    }
+    await syncState.clearSynced();
+    if (!context.mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Synced operations cleared.')));
+  }
+}
+
+class _DiagnosticsCard extends StatelessWidget {
+  const _DiagnosticsCard({
+    required this.marketState,
+    required this.authState,
+    required this.syncState,
+  });
+
+  final MarketState marketState;
+  final AuthState authState;
+  final SyncState syncState;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            const _SettingsRow(
+              label: 'Policy',
+              value: AppConfig.syncDiagnosticsLabel,
+            ),
+            const Divider(height: 22),
+            _SettingsRow(label: 'Build mode', value: AppConfig.buildModeLabel),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Market mode',
+              value: marketState.dataMode.label,
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Auth mode',
+              value: authState.isAuthenticated
+                  ? 'Demo signed in'
+                  : 'Signed out',
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Sync mode',
+              value: syncState.metadata.syncMode.label,
+            ),
+            const Divider(height: 22),
+            const _SettingsRow(
+              label: 'Storage',
+              value: 'Local-first persistence',
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -440,4 +629,14 @@ class _SettingsRow extends StatelessWidget {
       ],
     );
   }
+}
+
+String _formatDateTime(DateTime? value) {
+  if (value == null) {
+    return 'Never';
+  }
+  final local = value.toLocal();
+  String twoDigits(int value) => value.toString().padLeft(2, '0');
+  return '${local.year}-${twoDigits(local.month)}-${twoDigits(local.day)} '
+      '${twoDigits(local.hour)}:${twoDigits(local.minute)}';
 }

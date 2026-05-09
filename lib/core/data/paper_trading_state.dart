@@ -4,6 +4,9 @@ import '../config/app_config.dart';
 import '../models/asset.dart';
 import '../models/paper_order.dart';
 import '../models/portfolio_position.dart';
+import '../sync/sync_operation.dart';
+import '../sync/sync_snapshots.dart';
+import '../sync/sync_state.dart';
 import 'app_result.dart';
 import 'local_paper_trading_repository.dart';
 import 'market_state.dart';
@@ -33,10 +36,12 @@ class PaperTradingState extends ChangeNotifier {
     List<PaperOrder>? initialOrders,
     DateTime? initialLastUpdated,
     PaperTradingRepository? repository,
+    SyncState? syncState,
   }) : _cashBalance = initialCashBalance,
        _startingCash = initialStartingCash ?? AppConfig.defaultStartingCash,
        _lastUpdated = initialLastUpdated,
-       _repository = repository ?? const LocalPaperTradingRepository() {
+       _repository = repository ?? const LocalPaperTradingRepository(),
+       _syncState = syncState {
     for (final position in initialPositions ?? MockMarketData.positions) {
       _positions[position.asset.symbol] = position;
     }
@@ -47,6 +52,7 @@ class PaperTradingState extends ChangeNotifier {
 
   static Future<PaperTradingState> load({
     PaperTradingRepository? repository,
+    SyncState? syncState,
   }) async {
     final accountRepository = repository ?? const LocalPaperTradingRepository();
     late final AppResult<PaperTradingAccount> result;
@@ -58,14 +64,19 @@ class PaperTradingState extends ChangeNotifier {
         error: error,
         stackTrace: stackTrace,
       );
-      return PaperTradingState(repository: accountRepository)
-        .._lastError = 'Unable to restore paper trading account.';
+      return PaperTradingState(
+        repository: accountRepository,
+        syncState: syncState,
+      ).._lastError = 'Unable to restore paper trading account.';
     }
     return result.when(
-      success: (account) =>
-          PaperTradingState.fromAccount(account, repository: accountRepository),
+      success: (account) => PaperTradingState.fromAccount(
+        account,
+        repository: accountRepository,
+        syncState: syncState,
+      ),
       failure: (message) =>
-          PaperTradingState(repository: accountRepository)
+          PaperTradingState(repository: accountRepository, syncState: syncState)
             .._lastError = message,
     );
   }
@@ -73,6 +84,7 @@ class PaperTradingState extends ChangeNotifier {
   factory PaperTradingState.fromAccount(
     PaperTradingAccount account, {
     PaperTradingRepository? repository,
+    SyncState? syncState,
   }) {
     return PaperTradingState(
       initialCashBalance: account.cashBalance,
@@ -81,6 +93,7 @@ class PaperTradingState extends ChangeNotifier {
       initialOrders: account.orders,
       initialLastUpdated: account.lastUpdated,
       repository: repository,
+      syncState: syncState,
     );
   }
 
@@ -96,6 +109,7 @@ class PaperTradingState extends ChangeNotifier {
   final Map<String, PortfolioPosition> _positions = {};
   final List<PaperOrder> _orders = [];
   final PaperTradingRepository _repository;
+  final SyncState? _syncState;
   bool _isSaving = false;
   String? _lastError;
 
@@ -242,6 +256,11 @@ class PaperTradingState extends ChangeNotifier {
     if (saveResult is AppFailure<void>) {
       return TradeExecutionResult.failure(saveResult.message);
     }
+    await _enqueueSyncOperation(
+      operationType: SyncOperationType.update,
+      entityId: 'paper-account',
+      payload: paperTradingSnapshot(_toAccount()),
+    );
 
     return TradeExecutionResult.success(
       '${side.label} order filled for ${quantity.toStringAsFixed(4)} ${asset.symbol}.',
@@ -276,6 +295,13 @@ class PaperTradingState extends ChangeNotifier {
     );
     _setSaving(false);
     notifyListeners();
+    if (_lastError == null) {
+      await _enqueueSyncOperation(
+        operationType: SyncOperationType.reset,
+        entityId: 'paper-account',
+        payload: paperTradingSnapshot(_toAccount()),
+      );
+    }
   }
 
   Future<void> clearOrderHistory() async {
@@ -306,6 +332,13 @@ class PaperTradingState extends ChangeNotifier {
     );
     _setSaving(false);
     notifyListeners();
+    if (_lastError == null) {
+      await _enqueueSyncOperation(
+        operationType: SyncOperationType.clear,
+        entityId: 'paper-account',
+        payload: paperTradingSnapshot(_toAccount()),
+      );
+    }
   }
 
   String toJsonString() => _toAccount().toJsonString();
@@ -364,6 +397,35 @@ class PaperTradingState extends ChangeNotifier {
     );
     _setSaving(false);
     return result;
+  }
+
+  Future<void> _enqueueSyncOperation({
+    required SyncOperationType operationType,
+    required String entityId,
+    required Map<String, Object?> payload,
+  }) async {
+    final syncState = _syncState;
+    if (syncState == null) {
+      return;
+    }
+    try {
+      await syncState.enqueueOperation(
+        buildSyncOperation(
+          id: 'paper-${operationType.name}-${DateTime.now().microsecondsSinceEpoch}',
+          entityType: SyncEntityType.paperAccount,
+          operationType: operationType,
+          entityId: entityId,
+          createdAt: DateTime.now(),
+          payload: payload,
+        ),
+      );
+    } catch (error, stackTrace) {
+      AppLogger.warn(
+        'Paper trading sync enqueue failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   void _setSaving(bool value) {

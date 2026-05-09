@@ -21,6 +21,9 @@ import '../core/options_portfolio/options_portfolio_store.dart';
 import '../core/data/paper_trading_state.dart';
 import '../core/data/paper_trading_repository.dart';
 import '../core/data/paper_trading_store.dart';
+import '../core/sync/local_sync_repository.dart';
+import '../core/sync/sync_repository.dart';
+import '../core/sync/sync_state.dart';
 import '../core/utils/app_logger.dart';
 import '../features/activity/activity_screen.dart';
 import '../features/analytics/analytics_screen.dart';
@@ -43,6 +46,7 @@ class TradingApp extends StatefulWidget {
     this.paperTradingRepository,
     this.journalRepository,
     this.optionsPortfolioRepository,
+    this.syncRepository,
   });
 
   final AuthRepository? authRepository;
@@ -50,6 +54,7 @@ class TradingApp extends StatefulWidget {
   final PaperTradingRepository? paperTradingRepository;
   final JournalRepository? journalRepository;
   final OptionsPortfolioRepository? optionsPortfolioRepository;
+  final SyncRepository? syncRepository;
 
   @override
   State<TradingApp> createState() => _TradingAppState();
@@ -58,6 +63,7 @@ class TradingApp extends StatefulWidget {
 class _TradingAppState extends State<TradingApp> {
   late final AuthState _authState;
   late final MarketState _marketState;
+  late final SyncState _syncState;
   late final Future<PaperTradingState> _paperTradingStateFuture;
   late final Future<JournalState> _journalStateFuture;
   late final Future<OptionsPortfolioState> _optionsPortfolioStateFuture;
@@ -71,10 +77,16 @@ class _TradingAppState extends State<TradingApp> {
   @override
   void initState() {
     super.initState();
+    _syncState = SyncState(
+      repository:
+          widget.syncRepository ??
+          LocalSyncRepository(store: SharedPreferencesSyncStore()),
+    );
     _authState = AuthState(
       repository:
           widget.authRepository ??
           LocalDemoAuthRepository(store: SharedPreferencesAuthStore()),
+      syncState: _syncState,
     );
     _marketState = MarketState(
       repository:
@@ -86,11 +98,13 @@ class _TradingAppState extends State<TradingApp> {
           LocalPaperTradingRepository(
             store: SharedPreferencesPaperTradingStore(),
           ),
+      syncState: _syncState,
     );
     _journalStateFuture = JournalState.load(
       repository:
           widget.journalRepository ??
           LocalJournalRepository(store: SharedPreferencesJournalStore()),
+      syncState: _syncState,
     );
     _optionsPortfolioStateFuture = OptionsPortfolioState.load(
       repository:
@@ -98,6 +112,7 @@ class _TradingAppState extends State<TradingApp> {
           LocalOptionsPortfolioRepository(
             store: SharedPreferencesOptionsPortfolioStore(),
           ),
+      syncState: _syncState,
     );
     _authRestoreFuture = _authState.restoreSession();
     _startupFuture = _restoreStartupState();
@@ -107,6 +122,7 @@ class _TradingAppState extends State<TradingApp> {
   void dispose() {
     _authState.dispose();
     _marketState.dispose();
+    _syncState.dispose();
     _paperTradingState?.dispose();
     _journalState?.dispose();
     _insightsState?.dispose();
@@ -126,17 +142,20 @@ class _TradingAppState extends State<TradingApp> {
           _insightsState ??= bundle.insightsState;
           return AuthScope(
             state: _authState,
-            child: PaperTradingScope(
-              state: _paperTradingState!,
-              child: MarketScope(
-                state: _marketState,
-                child: JournalScope(
-                  state: _journalState!,
-                  child: OptionsPortfolioScope(
-                    state: _optionsPortfolioState!,
-                    child: InsightsScope(
-                      state: _insightsState!,
-                      child: _buildMaterialApp(const TradingShell()),
+            child: SyncScope(
+              state: _syncState,
+              child: PaperTradingScope(
+                state: _paperTradingState!,
+                child: MarketScope(
+                  state: _marketState,
+                  child: JournalScope(
+                    state: _journalState!,
+                    child: OptionsPortfolioScope(
+                      state: _optionsPortfolioState!,
+                      child: InsightsScope(
+                        state: _insightsState!,
+                        child: _buildMaterialApp(const TradingShell()),
+                      ),
                     ),
                   ),
                 ),
@@ -168,6 +187,7 @@ class _TradingAppState extends State<TradingApp> {
     _optionsPortfolioState = await _optionsPortfolioStateFuture;
     final paperTradingState = await _paperTradingStateFuture;
     await _marketState.loadAssets();
+    await _syncState.refreshMetadata();
     _insightsState = InsightsState(
       journalState: _journalState!,
       paperTradingState: paperTradingState,

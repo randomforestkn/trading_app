@@ -26,6 +26,9 @@ class AppConfig {
       'Insights are rule-based and educational only.';
   static const demoAuthDisclaimer =
       'Demo auth only - no real account is created.';
+  static const syncDisclaimer =
+      'Cloud sync is not connected yet. Changes are tracked locally for future backend integration.';
+  static const syncDiagnosticsLabel = 'Local-first sync';
   static const demoUserId = 'demo-user';
   static const demoUserEmail = 'demo@cleartrade.local';
   static const demoUserDisplayName = 'Demo Trader';

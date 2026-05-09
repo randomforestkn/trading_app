@@ -2,16 +2,21 @@ import 'package:flutter/widgets.dart';
 
 import '../models/app_user.dart';
 import '../models/auth_session.dart';
+import '../sync/sync_operation.dart';
+import '../sync/sync_snapshots.dart';
+import '../sync/sync_state.dart';
 import 'app_result.dart';
 import 'auth_repository.dart';
 import 'local_demo_auth_repository.dart';
 import '../utils/app_logger.dart';
 
 class AuthState extends ChangeNotifier {
-  AuthState({AuthRepository? repository})
-    : _repository = repository ?? const LocalDemoAuthRepository();
+  AuthState({AuthRepository? repository, SyncState? syncState})
+    : _repository = repository ?? const LocalDemoAuthRepository(),
+      _syncState = syncState;
 
   final AuthRepository _repository;
+  final SyncState? _syncState;
   AppUser? _currentUser;
   bool _isLoading = false;
   String? _errorMessage;
@@ -55,6 +60,7 @@ class AuthState extends ChangeNotifier {
   Future<void> signInDemo() async {
     _setLoading(true);
     late final AppResult<AuthSession> result;
+    AuthSession? signedInSession;
     try {
       result = await _repository.signInDemo();
     } catch (error, stackTrace) {
@@ -69,6 +75,7 @@ class AuthState extends ChangeNotifier {
     }
     result.when(
       success: (session) {
+        signedInSession = session;
         _currentUser = session.user;
         _errorMessage = null;
       },
@@ -78,11 +85,19 @@ class AuthState extends ChangeNotifier {
       },
     );
     _setLoading(false);
+    if (_errorMessage == null && signedInSession != null) {
+      await _enqueueSyncOperation(
+        operationType: SyncOperationType.create,
+        entityId: signedInSession!.user.id,
+        payload: authSessionSnapshot(signedInSession),
+      );
+    }
   }
 
   Future<void> signOut() async {
     _setLoading(true);
     late final AppResult<void> result;
+    final previousUserId = _currentUser?.id ?? 'auth-session';
     try {
       result = await _repository.signOut();
     } catch (error, stackTrace) {
@@ -106,6 +121,42 @@ class AuthState extends ChangeNotifier {
       },
     );
     _setLoading(false);
+    if (_errorMessage == null) {
+      await _enqueueSyncOperation(
+        operationType: SyncOperationType.delete,
+        entityId: previousUserId,
+        payload: authSessionSnapshot(null),
+      );
+    }
+  }
+
+  Future<void> _enqueueSyncOperation({
+    required SyncOperationType operationType,
+    required String entityId,
+    required Map<String, Object?> payload,
+  }) async {
+    final syncState = _syncState;
+    if (syncState == null) {
+      return;
+    }
+    try {
+      await syncState.enqueueOperation(
+        buildSyncOperation(
+          id: 'auth-${operationType.name}-${DateTime.now().microsecondsSinceEpoch}',
+          entityType: SyncEntityType.authSession,
+          operationType: operationType,
+          entityId: entityId,
+          createdAt: DateTime.now(),
+          payload: payload,
+        ),
+      );
+    } catch (error, stackTrace) {
+      AppLogger.warn(
+        'Auth sync enqueue failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   void _setLoading(bool value) {

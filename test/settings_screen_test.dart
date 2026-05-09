@@ -10,6 +10,8 @@ import 'package:trading_app/core/data/mock_market_data.dart';
 import 'package:trading_app/core/data/paper_trading_state.dart';
 import 'package:trading_app/core/data/paper_trading_store.dart';
 import 'package:trading_app/core/models/paper_order.dart';
+import 'package:trading_app/core/sync/local_sync_repository.dart';
+import 'package:trading_app/core/sync/sync_state.dart';
 import 'package:trading_app/features/settings/settings_screen.dart';
 
 void main() {
@@ -21,8 +23,12 @@ void main() {
     expect(find.text('Paper account'), findsOneWidget);
     expect(find.text('App information'), findsOneWidget);
     expect(find.text(AppConfig.appVersionLabel), findsOneWidget);
-    expect(find.text(AppConfig.buildModeLabel), findsOneWidget);
+    expect(find.text(AppConfig.buildModeLabel), findsWidgets);
     expect(find.text(AppConfig.paperTradingDisclaimer), findsOneWidget);
+    expect(find.text(AppConfig.syncDisclaimer), findsOneWidget);
+    expect(find.text('Sync'), findsOneWidget);
+    expect(find.text('Sync now'), findsOneWidget);
+    expect(find.text('Local only'), findsWidgets);
   });
 
   testWidgets('Settings shows signed-in user', (tester) async {
@@ -43,7 +49,7 @@ void main() {
   testWidgets('Settings shows signed-out state', (tester) async {
     await tester.pumpWidget(_settingsHarness(PaperTradingState()));
 
-    expect(find.text('Signed out'), findsOneWidget);
+    expect(find.text('Signed out'), findsWidgets);
     expect(find.text('Sign in demo account'), findsOneWidget);
   });
 
@@ -150,13 +156,18 @@ Widget _settingsHarness(PaperTradingState state, {AuthState? authState}) {
         AuthState(
           repository: LocalDemoAuthRepository(store: MemoryAuthStore()),
         ),
-    child: MarketScope(
-      state: MarketState(),
-      child: PaperTradingScope(
-        state: state,
-        child: MaterialApp(
-          theme: ThemeData.dark(useMaterial3: true),
-          home: const SettingsScreen(),
+    child: SyncScope(
+      state: SyncState(
+        repository: LocalSyncRepository(store: MemorySyncStore()),
+      ),
+      child: MarketScope(
+        state: MarketState(),
+        child: PaperTradingScope(
+          state: state,
+          child: MaterialApp(
+            theme: ThemeData.dark(useMaterial3: true),
+            home: const SettingsScreen(),
+          ),
         ),
       ),
     ),

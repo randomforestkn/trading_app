@@ -1,5 +1,8 @@
 import 'package:flutter/widgets.dart';
 
+import '../sync/sync_operation.dart';
+import '../sync/sync_snapshots.dart';
+import '../sync/sync_state.dart';
 import '../data/app_result.dart';
 import '../utils/app_logger.dart';
 import 'journal_entry.dart';
@@ -7,10 +10,12 @@ import 'journal_repository.dart';
 import 'local_journal_repository.dart';
 
 class JournalState extends ChangeNotifier {
-  JournalState({JournalRepository? repository})
-    : _repository = repository ?? const LocalJournalRepository();
+  JournalState({JournalRepository? repository, SyncState? syncState})
+    : _repository = repository ?? const LocalJournalRepository(),
+      _syncState = syncState;
 
   final JournalRepository _repository;
+  final SyncState? _syncState;
   final List<JournalEntry> _entries = [];
   bool _isLoading = false;
   bool _isSaving = false;
@@ -56,8 +61,14 @@ class JournalState extends ChangeNotifier {
     );
   }
 
-  static Future<JournalState> load({JournalRepository? repository}) async {
-    final journalState = JournalState(repository: repository);
+  static Future<JournalState> load({
+    JournalRepository? repository,
+    SyncState? syncState,
+  }) async {
+    final journalState = JournalState(
+      repository: repository,
+      syncState: syncState,
+    );
     await journalState.restore();
     return journalState;
   }
@@ -105,6 +116,13 @@ class JournalState extends ChangeNotifier {
     _sortEntries();
     notifyListeners();
     await _persistEntries('Unable to save journal entry.');
+    if (_errorMessage == null) {
+      await _enqueueSyncOperation(
+        operationType: SyncOperationType.create,
+        entityId: normalized.id,
+        payload: journalSnapshot(_entries),
+      );
+    }
   }
 
   Future<void> updateEntry(JournalEntry entry) async {
@@ -118,6 +136,13 @@ class JournalState extends ChangeNotifier {
     _sortEntries();
     notifyListeners();
     await _persistEntries('Unable to update journal entry.');
+    if (_errorMessage == null) {
+      await _enqueueSyncOperation(
+        operationType: SyncOperationType.update,
+        entityId: updated.id,
+        payload: journalSnapshot(_entries),
+      );
+    }
   }
 
   Future<void> deleteEntry(String id) async {
@@ -148,6 +173,13 @@ class JournalState extends ChangeNotifier {
     );
     _setSaving(false);
     notifyListeners();
+    if (_errorMessage == null) {
+      await _enqueueSyncOperation(
+        operationType: SyncOperationType.delete,
+        entityId: id,
+        payload: journalSnapshot(_entries),
+      );
+    }
   }
 
   JournalEntry? entryById(String id) {
@@ -187,6 +219,13 @@ class JournalState extends ChangeNotifier {
     );
     _setSaving(false);
     notifyListeners();
+    if (_errorMessage == null) {
+      await _enqueueSyncOperation(
+        operationType: SyncOperationType.clear,
+        entityId: 'journal',
+        payload: journalSnapshot(_entries),
+      );
+    }
   }
 
   Future<void> _persistEntries(String failureMessage) async {
@@ -231,6 +270,35 @@ class JournalState extends ChangeNotifier {
       }
       return right.createdAt.compareTo(left.createdAt);
     });
+  }
+
+  Future<void> _enqueueSyncOperation({
+    required SyncOperationType operationType,
+    required String entityId,
+    required Map<String, Object?> payload,
+  }) async {
+    final syncState = _syncState;
+    if (syncState == null) {
+      return;
+    }
+    try {
+      await syncState.enqueueOperation(
+        buildSyncOperation(
+          id: 'journal-${operationType.name}-${DateTime.now().microsecondsSinceEpoch}',
+          entityType: SyncEntityType.journal,
+          operationType: operationType,
+          entityId: entityId,
+          createdAt: DateTime.now(),
+          payload: payload,
+        ),
+      );
+    } catch (error, stackTrace) {
+      AppLogger.warn(
+        'Journal sync enqueue failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   List<JournalEntry> _sortedEntries() {

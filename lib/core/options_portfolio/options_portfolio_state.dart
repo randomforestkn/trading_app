@@ -3,6 +3,9 @@ import 'package:flutter/widgets.dart';
 import '../data/app_result.dart';
 import '../strategies/option_contract.dart';
 import '../strategies/option_strategy.dart';
+import '../sync/sync_operation.dart';
+import '../sync/sync_snapshots.dart';
+import '../sync/sync_state.dart';
 import '../utils/app_logger.dart';
 import 'local_options_portfolio_repository.dart';
 import 'option_position.dart';
@@ -12,10 +15,14 @@ import 'options_portfolio_repository.dart';
 import 'wheel_cycle.dart';
 
 class OptionsPortfolioState extends ChangeNotifier {
-  OptionsPortfolioState({OptionsPortfolioRepository? repository})
-    : _repository = repository ?? const LocalOptionsPortfolioRepository();
+  OptionsPortfolioState({
+    OptionsPortfolioRepository? repository,
+    SyncState? syncState,
+  }) : _repository = repository ?? const LocalOptionsPortfolioRepository(),
+       _syncState = syncState;
 
   final OptionsPortfolioRepository _repository;
+  final SyncState? _syncState;
   final List<OptionPosition> _positions = [];
   final List<OptionTrade> _trades = [];
   final List<WheelCycle> _wheelCycles = [];
@@ -55,8 +62,12 @@ class OptionsPortfolioState extends ChangeNotifier {
 
   static Future<OptionsPortfolioState> load({
     OptionsPortfolioRepository? repository,
+    SyncState? syncState,
   }) async {
-    final state = OptionsPortfolioState(repository: repository);
+    final state = OptionsPortfolioState(
+      repository: repository,
+      syncState: syncState,
+    );
     await state.restore();
     return state;
   }
@@ -141,6 +152,13 @@ class OptionsPortfolioState extends ChangeNotifier {
     _touch(now);
     notifyListeners();
     await _persist('Unable to save option position.');
+    if (_errorMessage == null) {
+      await _enqueueSyncOperation(
+        operationType: SyncOperationType.create,
+        entityId: normalized.id,
+        payload: optionsPortfolioSnapshot(_toAccount()),
+      );
+    }
   }
 
   Future<void> updatePosition(OptionPosition position) async {
@@ -156,6 +174,13 @@ class OptionsPortfolioState extends ChangeNotifier {
     _touch(DateTime.now());
     notifyListeners();
     await _persist('Unable to update option position.');
+    if (_errorMessage == null) {
+      await _enqueueSyncOperation(
+        operationType: SyncOperationType.update,
+        entityId: position.id,
+        payload: optionsPortfolioSnapshot(_toAccount()),
+      );
+    }
   }
 
   Future<void> closePosition(
@@ -194,6 +219,13 @@ class OptionsPortfolioState extends ChangeNotifier {
     _touch(now);
     notifyListeners();
     await _persist('Unable to close option position.');
+    if (_errorMessage == null) {
+      await _enqueueSyncOperation(
+        operationType: SyncOperationType.update,
+        entityId: updated.id,
+        payload: optionsPortfolioSnapshot(_toAccount()),
+      );
+    }
   }
 
   Future<void> markExpired(
@@ -230,6 +262,13 @@ class OptionsPortfolioState extends ChangeNotifier {
     _touch(now);
     notifyListeners();
     await _persist('Unable to mark option expired.');
+    if (_errorMessage == null) {
+      await _enqueueSyncOperation(
+        operationType: SyncOperationType.update,
+        entityId: updated.id,
+        payload: optionsPortfolioSnapshot(_toAccount()),
+      );
+    }
   }
 
   Future<void> markAssigned(
@@ -273,6 +312,13 @@ class OptionsPortfolioState extends ChangeNotifier {
     _touch(now);
     notifyListeners();
     await _persist('Unable to mark option assigned.');
+    if (_errorMessage == null) {
+      await _enqueueSyncOperation(
+        operationType: SyncOperationType.update,
+        entityId: updated.id,
+        payload: optionsPortfolioSnapshot(_toAccount()),
+      );
+    }
   }
 
   Future<void> deletePosition(String id) async {
@@ -307,6 +353,13 @@ class OptionsPortfolioState extends ChangeNotifier {
     _touch(DateTime.now());
     notifyListeners();
     await _persist('Unable to delete option position.');
+    if (_errorMessage == null) {
+      await _enqueueSyncOperation(
+        operationType: SyncOperationType.delete,
+        entityId: id,
+        payload: optionsPortfolioSnapshot(_toAccount()),
+      );
+    }
   }
 
   Future<void> reset() async {
@@ -337,6 +390,13 @@ class OptionsPortfolioState extends ChangeNotifier {
     );
     _setSaving(false);
     notifyListeners();
+    if (_errorMessage == null) {
+      await _enqueueSyncOperation(
+        operationType: SyncOperationType.reset,
+        entityId: 'options-portfolio',
+        payload: optionsPortfolioSnapshot(_toAccount()),
+      );
+    }
   }
 
   void _applyAccount(OptionsPortfolioAccount account) {
@@ -558,6 +618,35 @@ class OptionsPortfolioState extends ChangeNotifier {
       }
       return right.id.compareTo(left.id);
     });
+  }
+
+  Future<void> _enqueueSyncOperation({
+    required SyncOperationType operationType,
+    required String entityId,
+    required Map<String, Object?> payload,
+  }) async {
+    final syncState = _syncState;
+    if (syncState == null) {
+      return;
+    }
+    try {
+      await syncState.enqueueOperation(
+        buildSyncOperation(
+          id: 'options-${operationType.name}-${DateTime.now().microsecondsSinceEpoch}',
+          entityType: SyncEntityType.optionsPortfolio,
+          operationType: operationType,
+          entityId: entityId,
+          createdAt: DateTime.now(),
+          payload: payload,
+        ),
+      );
+    } catch (error, stackTrace) {
+      AppLogger.warn(
+        'Options portfolio sync enqueue failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   double _estimateRealizedPnlForClose(
