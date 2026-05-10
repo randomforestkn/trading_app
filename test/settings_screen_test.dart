@@ -10,6 +10,7 @@ import 'package:trading_app/core/data/mock_market_data.dart';
 import 'package:trading_app/core/data/paper_trading_state.dart';
 import 'package:trading_app/core/data/paper_trading_store.dart';
 import 'package:trading_app/core/models/paper_order.dart';
+import 'package:trading_app/core/onboarding/onboarding_state.dart';
 import 'package:trading_app/core/sync/local_sync_repository.dart';
 import 'package:trading_app/core/sync/sync_state.dart';
 import 'package:trading_app/features/settings/settings_screen.dart';
@@ -29,8 +30,13 @@ void main() {
     expect(find.text('Sync'), findsOneWidget);
     expect(find.text('Sync now'), findsOneWidget);
     expect(find.text('Local only'), findsWidgets);
+    expect(find.text('Legal'), findsOneWidget);
+    expect(find.text('Disclaimer'), findsWidgets);
+    expect(find.text('Data & privacy'), findsOneWidget);
+    expect(find.text('View onboarding again'), findsOneWidget);
     expect(find.text('Export data / reports'), findsOneWidget);
     expect(find.text('Import / restore backup'), findsOneWidget);
+    expect(find.text(AppConfig.supportContactPlaceholder), findsOneWidget);
   });
 
   testWidgets('Settings shows signed-in user', (tester) async {
@@ -152,6 +158,7 @@ Future<void> _scrollSettings(WidgetTester tester, double dy) async {
 }
 
 Widget _settingsHarness(PaperTradingState state, {AuthState? authState}) {
+  final onboardingState = OnboardingState();
   return AuthScope(
     state:
         authState ??
@@ -164,11 +171,14 @@ Widget _settingsHarness(PaperTradingState state, {AuthState? authState}) {
       ),
       child: MarketScope(
         state: MarketState(),
-        child: PaperTradingScope(
-          state: state,
-          child: MaterialApp(
-            theme: ThemeData.dark(useMaterial3: true),
-            home: const SettingsScreen(),
+        child: OnboardingScope(
+          state: onboardingState,
+          child: PaperTradingScope(
+            state: state,
+            child: MaterialApp(
+              theme: ThemeData.dark(useMaterial3: true),
+              home: const SettingsScreen(),
+            ),
           ),
         ),
       ),

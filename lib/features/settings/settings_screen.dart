@@ -5,9 +5,12 @@ import '../../core/config/app_config.dart';
 import '../../core/data/auth_state.dart';
 import '../../core/data/market_state.dart';
 import '../../core/data/paper_trading_state.dart';
+import '../../core/onboarding/onboarding_state.dart';
 import '../../core/sync/sync_state.dart';
 import '../../core/sync/sync_status.dart';
+import '../legal/disclaimer_screen.dart';
 import '../export_reports/export_reports_screen.dart';
+import '../onboarding/onboarding_screen.dart';
 import '../../core/widgets/app_page.dart';
 import '../../core/widgets/section_header.dart';
 
@@ -54,6 +57,41 @@ class SettingsScreen extends StatelessWidget {
         ),
         const SectionHeader('App information'),
         _AppInfoCard(marketState: marketState),
+        const SectionHeader('Legal'),
+        _SettingsActionCard(
+          icon: Icons.info_outline,
+          iconColor: AppTheme.secondary,
+          title: 'Disclaimer',
+          subtitle:
+              'Read the paper trading, options, and data limitation disclaimers.',
+          actionLabel: 'Open',
+          onPressed: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const DisclaimerScreen())),
+        ),
+        const SizedBox(height: 10),
+        _SettingsActionCard(
+          icon: Icons.privacy_tip_outlined,
+          iconColor: AppTheme.secondary,
+          title: 'Data & privacy',
+          subtitle: 'Review what is stored locally and how backups work.',
+          actionLabel: 'Open',
+          onPressed: () =>
+              Navigator.of(context).pushNamed(DataPrivacyScreen.routeName),
+        ),
+        const SizedBox(height: 10),
+        _SettingsActionCard(
+          icon: Icons.school_outlined,
+          iconColor: AppTheme.primary,
+          title: 'View onboarding again',
+          subtitle: 'Review the paper trading guidance and acknowledgements.',
+          actionLabel: 'Open',
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const OnboardingScreen(requireAcceptance: false),
+            ),
+          ),
+        ),
         const SectionHeader('Sync'),
         _SyncCard(syncState: SyncScope.of(context)),
         const SectionHeader('Diagnostics'),
@@ -61,6 +99,7 @@ class SettingsScreen extends StatelessWidget {
           marketState: marketState,
           authState: authState,
           syncState: SyncScope.of(context),
+          onboardingState: OnboardingScope.maybeOf(context),
         ),
         const SectionHeader('Export & reports'),
         _SettingsActionCard(
@@ -300,11 +339,13 @@ class _DiagnosticsCard extends StatelessWidget {
     required this.marketState,
     required this.authState,
     required this.syncState,
+    required this.onboardingState,
   });
 
   final MarketState marketState;
   final AuthState authState;
   final SyncState syncState;
+  final OnboardingState? onboardingState;
 
   @override
   Widget build(BuildContext context) {
@@ -319,6 +360,10 @@ class _DiagnosticsCard extends StatelessWidget {
             ),
             const Divider(height: 22),
             _SettingsRow(label: 'Build mode', value: AppConfig.buildModeLabel),
+            const Divider(height: 22),
+            _SettingsRow(label: 'Build label', value: AppConfig.appBuildLabel),
+            const Divider(height: 22),
+            const _SettingsRow(label: 'Test/demo mode', value: 'Demo build'),
             const Divider(height: 22),
             _SettingsRow(
               label: 'Market mode',
@@ -337,9 +382,38 @@ class _DiagnosticsCard extends StatelessWidget {
               value: syncState.metadata.syncMode.label,
             ),
             const Divider(height: 22),
+            _SettingsRow(
+              label: 'Onboarding',
+              value: onboardingState?.isAccepted == true
+                  ? 'Accepted'
+                  : 'Not accepted',
+            ),
+            const Divider(height: 22),
+            const _SettingsRow(label: 'Storage', value: 'Local-first'),
+            const Divider(height: 22),
             const _SettingsRow(
-              label: 'Storage',
-              value: 'Local-first persistence',
+              label: 'Support contact',
+              value: AppConfig.supportContactPlaceholder,
+            ),
+            const Divider(height: 22),
+            const _SettingsRow(
+              label: 'Privacy policy',
+              value: AppConfig.privacyPolicyUrlPlaceholder,
+            ),
+            const Divider(height: 22),
+            const _SettingsRow(
+              label: 'Disclaimer version',
+              value: '${AppConfig.legalDisclaimerVersion}',
+            ),
+            const Divider(height: 22),
+            const _SettingsRow(
+              label: 'Onboarding version',
+              value: '${AppConfig.onboardingVersion}',
+            ),
+            const Divider(height: 22),
+            const _SettingsRow(
+              label: 'Backup reminder',
+              value: 'Keep a JSON backup before restoring local data.',
             ),
           ],
         ),
@@ -542,28 +616,10 @@ class _SettingsActionCard extends StatelessWidget {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            CircleAvatar(
-              backgroundColor: iconColor.withValues(alpha: 0.12),
-              child: Icon(icon, color: iconColor),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(fontWeight: FontWeight.w900),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(subtitle, style: const TextStyle(color: Colors.white60)),
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            FilledButton(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxWidth < 460;
+            final actionButton = FilledButton(
               style: destructive
                   ? FilledButton.styleFrom(
                       backgroundColor: AppTheme.danger,
@@ -572,8 +628,71 @@ class _SettingsActionCard extends StatelessWidget {
                   : null,
               onPressed: onPressed,
               child: Text(actionLabel),
-            ),
-          ],
+            );
+            if (compact) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: iconColor.withValues(alpha: 0.12),
+                        child: Icon(icon, color: iconColor),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              subtitle,
+                              style: const TextStyle(color: Colors.white60),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Align(alignment: Alignment.centerLeft, child: actionButton),
+                ],
+              );
+            }
+            return Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: iconColor.withValues(alpha: 0.12),
+                  child: Icon(icon, color: iconColor),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(fontWeight: FontWeight.w900),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(color: Colors.white60),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                actionButton,
+              ],
+            );
+          },
         ),
       ),
     );

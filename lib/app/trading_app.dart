@@ -14,6 +14,10 @@ import '../core/journal/local_journal_repository.dart';
 import '../core/journal/journal_state.dart';
 import '../core/journal/journal_store.dart';
 import '../core/insights/insights_state.dart';
+import '../core/onboarding/local_onboarding_repository.dart';
+import '../core/onboarding/onboarding_repository.dart';
+import '../core/onboarding/onboarding_state.dart';
+import '../core/onboarding/onboarding_store.dart';
 import '../core/options_portfolio/local_options_portfolio_repository.dart';
 import '../core/options_portfolio/options_portfolio_repository.dart';
 import '../core/options_portfolio/options_portfolio_state.dart';
@@ -29,8 +33,10 @@ import '../features/activity/activity_screen.dart';
 import '../features/analytics/analytics_screen.dart';
 import '../features/export_reports/export_reports_screen.dart';
 import '../features/home/home_screen.dart';
+import '../features/legal/disclaimer_screen.dart';
 import '../features/insights/insights_screen.dart';
 import '../features/journal/journal_screen.dart';
+import '../features/onboarding/onboarding_screen.dart';
 import '../features/learn/learn_screen.dart';
 import '../features/options_portfolio/options_portfolio_screen.dart';
 import '../features/portfolio/portfolio_screen.dart';
@@ -43,6 +49,7 @@ class TradingApp extends StatefulWidget {
   const TradingApp({
     super.key,
     this.authRepository,
+    this.onboardingRepository,
     this.marketRepository,
     this.paperTradingRepository,
     this.journalRepository,
@@ -51,6 +58,7 @@ class TradingApp extends StatefulWidget {
   });
 
   final AuthRepository? authRepository;
+  final OnboardingRepository? onboardingRepository;
   final MarketRepository? marketRepository;
   final PaperTradingRepository? paperTradingRepository;
   final JournalRepository? journalRepository;
@@ -61,8 +69,9 @@ class TradingApp extends StatefulWidget {
   State<TradingApp> createState() => _TradingAppState();
 }
 
-class _TradingAppState extends State<TradingApp> {
+class _TradingAppState extends State<TradingApp> with WidgetsBindingObserver {
   late final AuthState _authState;
+  late final OnboardingState _onboardingState;
   late final MarketState _marketState;
   late final SyncState _syncState;
   late final Future<PaperTradingState> _paperTradingStateFuture;
@@ -72,12 +81,12 @@ class _TradingAppState extends State<TradingApp> {
   JournalState? _journalState;
   OptionsPortfolioState? _optionsPortfolioState;
   InsightsState? _insightsState;
-  late final Future<void> _authRestoreFuture;
   late final Future<_TradingStartupBundle> _startupFuture;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _syncState = SyncState(
       repository:
           widget.syncRepository ??
@@ -88,6 +97,11 @@ class _TradingAppState extends State<TradingApp> {
           widget.authRepository ??
           LocalDemoAuthRepository(store: SharedPreferencesAuthStore()),
       syncState: _syncState,
+    );
+    _onboardingState = OnboardingState(
+      repository:
+          widget.onboardingRepository ??
+          LocalOnboardingRepository(store: SharedPreferencesOnboardingStore()),
     );
     _marketState = MarketState(
       repository:
@@ -115,13 +129,14 @@ class _TradingAppState extends State<TradingApp> {
           ),
       syncState: _syncState,
     );
-    _authRestoreFuture = _authState.restoreSession();
     _startupFuture = _restoreStartupState();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _authState.dispose();
+    _onboardingState.dispose();
     _marketState.dispose();
     _syncState.dispose();
     _paperTradingState?.dispose();
@@ -141,27 +156,38 @@ class _TradingAppState extends State<TradingApp> {
           _journalState = bundle.journalState;
           _optionsPortfolioState = bundle.optionsPortfolioState;
           _insightsState ??= bundle.insightsState;
-          return AuthScope(
-            state: _authState,
-            child: SyncScope(
-              state: _syncState,
-              child: PaperTradingScope(
-                state: _paperTradingState!,
-                child: MarketScope(
-                  state: _marketState,
-                  child: JournalScope(
-                    state: _journalState!,
-                    child: OptionsPortfolioScope(
-                      state: _optionsPortfolioState!,
-                      child: InsightsScope(
-                        state: _insightsState!,
-                        child: _buildMaterialApp(const TradingShell()),
+          return AnimatedBuilder(
+            animation: _onboardingState,
+            builder: (context, _) {
+              final home = bundle.onboardingState.isAccepted
+                  ? const TradingShell()
+                  : const OnboardingScreen(requireAcceptance: true);
+              return OnboardingScope(
+                state: _onboardingState,
+                child: AuthScope(
+                  state: _authState,
+                  child: SyncScope(
+                    state: _syncState,
+                    child: PaperTradingScope(
+                      state: _paperTradingState!,
+                      child: MarketScope(
+                        state: _marketState,
+                        child: JournalScope(
+                          state: _journalState!,
+                          child: OptionsPortfolioScope(
+                            state: _optionsPortfolioState!,
+                            child: InsightsScope(
+                              state: _insightsState!,
+                              child: _buildMaterialApp(home),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ),
+              );
+            },
           );
         }
 
@@ -183,7 +209,8 @@ class _TradingAppState extends State<TradingApp> {
   }
 
   Future<_TradingStartupBundle> _restoreStartupState() async {
-    await _authRestoreFuture;
+    await _authState.restoreSession();
+    await _onboardingState.load();
     _journalState = await _journalStateFuture;
     _optionsPortfolioState = await _optionsPortfolioStateFuture;
     final paperTradingState = await _paperTradingStateFuture;
@@ -196,6 +223,7 @@ class _TradingAppState extends State<TradingApp> {
       marketState: _marketState,
     );
     return _TradingStartupBundle(
+      onboardingState: _onboardingState,
       paperTradingState: paperTradingState,
       journalState: _journalState!,
       optionsPortfolioState: _optionsPortfolioState!,
@@ -215,6 +243,8 @@ class _TradingAppState extends State<TradingApp> {
         ExportReportsScreen.routeName: (_) => const ExportReportsScreen(),
         InsightsScreen.routeName: (_) => const InsightsScreen(),
         JournalScreen.routeName: (_) => const JournalScreen(),
+        DisclaimerScreen.routeName: (_) => const DisclaimerScreen(),
+        DataPrivacyScreen.routeName: (_) => const DataPrivacyScreen(),
         OptionsPortfolioScreen.routeName: (_) => const OptionsPortfolioScreen(),
         StrategySimulatorScreen.routeName: (_) =>
             const StrategySimulatorScreen(),
@@ -223,16 +253,27 @@ class _TradingAppState extends State<TradingApp> {
       home: home,
     );
   }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) {
+      return;
+    }
+    _syncState.refreshMetadata();
+    _insightsState?.refreshInsights();
+  }
 }
 
 class _TradingStartupBundle {
   const _TradingStartupBundle({
+    required this.onboardingState,
     required this.paperTradingState,
     required this.journalState,
     required this.optionsPortfolioState,
     required this.insightsState,
   });
 
+  final OnboardingState onboardingState;
   final PaperTradingState paperTradingState;
   final JournalState journalState;
   final OptionsPortfolioState optionsPortfolioState;

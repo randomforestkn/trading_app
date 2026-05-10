@@ -62,6 +62,7 @@ class AssetTile extends StatelessWidget {
                     child: MiniTrendChart(
                       points: history ?? asset.trend,
                       isPositive: asset.dailyChangePercent >= 0,
+                      semanticLabel: 'Price trend for ${asset.symbol}',
                       width: 50,
                     ),
                   ),

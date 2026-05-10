@@ -22,10 +22,18 @@ class AppConfig {
       'Paper trading only - no real money involved.';
   static const simulatedPricesDisclaimer =
       'Prices are simulated demo data and are not suitable for real trading decisions.';
+  static const optionsRiskDisclaimer =
+      'Options tools are educational calculators only and do not model broker execution.';
   static const insightsDisclaimer =
       'Insights are rule-based and educational only.';
   static const demoAuthDisclaimer =
       'Demo auth only - no real account is created.';
+  static const legalDisclaimerVersion = 1;
+  static const onboardingVersion = 1;
+  static const supportContactPlaceholder =
+      'support@cleartrade.example (placeholder)';
+  static const privacyPolicyUrlPlaceholder =
+      'https://example.com/privacy (placeholder)';
   static const syncDisclaimer =
       'Cloud sync is not connected yet. Changes are tracked locally for future backend integration.';
   static const syncDiagnosticsLabel = 'Local-first sync';
@@ -41,6 +49,7 @@ class AppConfig {
   static const demoUserDisplayName = 'Demo Trader';
   static const journalStorageKey = 'journal_entries_v1';
   static const optionsPortfolioStorageKey = 'options_portfolio_v1';
+  static const onboardingStorageKey = 'onboarding_progress_v1';
 
   static String marketModeLabel(MarketDataMode mode) {
     return switch (mode) {
@@ -56,4 +65,5 @@ class AppConfig {
       : _isProfile
       ? 'Profile'
       : 'Debug';
+  static String get appBuildLabel => '$appVersionLabel · $buildModeLabel';
 }

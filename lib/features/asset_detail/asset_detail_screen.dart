@@ -302,16 +302,21 @@ class _LivePriceChartState extends State<_LivePriceChart> {
             ],
           ),
           const SizedBox(height: 16),
-          SizedBox(
-            height: 260,
-            child: CustomPaint(
-              painter: _ChartPainter(points: points, isPositive: isPositive),
-              child: Align(
-                alignment: Alignment.bottomRight,
-                child: MiniTrendChart(
-                  points: points,
-                  isPositive: isPositive,
-                  height: 44,
+          Semantics(
+            label: 'Live simulated price history chart for ${asset.symbol}',
+            image: true,
+            child: SizedBox(
+              height: 260,
+              child: CustomPaint(
+                painter: _ChartPainter(points: points, isPositive: isPositive),
+                child: Align(
+                  alignment: Alignment.bottomRight,
+                  child: MiniTrendChart(
+                    points: points,
+                    isPositive: isPositive,
+                    semanticLabel: 'Mini price trend for ${asset.symbol}',
+                    height: 44,
+                  ),
                 ),
               ),
             ),

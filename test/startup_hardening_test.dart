@@ -14,14 +14,29 @@ import 'package:trading_app/core/config/app_config.dart';
 import 'package:trading_app/core/options_portfolio/options_portfolio_repository.dart';
 import 'package:trading_app/core/options_portfolio/options_portfolio_account.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:trading_app/core/onboarding/local_onboarding_repository.dart';
+import 'package:trading_app/core/onboarding/onboarding_progress.dart';
+import 'package:trading_app/core/onboarding/onboarding_store.dart';
 
 void main() {
   testWidgets('startup restore renders without crashing', (tester) async {
     SharedPreferences.setMockInitialValues({});
+    final onboardingRepository = LocalOnboardingRepository(
+      store: MemoryOnboardingStore(),
+    );
+    await onboardingRepository.saveProgress(
+      OnboardingProgress(
+        viewedVersion: AppConfig.onboardingVersion,
+        acceptedVersion: AppConfig.onboardingVersion,
+        viewedAt: DateTime.now(),
+        acceptedAt: DateTime.now(),
+      ),
+    );
 
     await tester.pumpWidget(
-      const TradingApp(
+      TradingApp(
         authRepository: _ThrowingAuthRepository(),
+        onboardingRepository: onboardingRepository,
         marketRepository: _FailingMarketRepository(),
         paperTradingRepository: _ThrowingPaperTradingRepository(),
         journalRepository: _ThrowingJournalRepository(),

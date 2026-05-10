@@ -6,6 +6,7 @@ class MiniTrendChart extends StatelessWidget {
   const MiniTrendChart({
     required this.points,
     required this.isPositive,
+    this.semanticLabel,
     this.width = 64,
     this.height = 36,
     super.key,
@@ -13,18 +14,23 @@ class MiniTrendChart extends StatelessWidget {
 
   final List<double> points;
   final bool isPositive;
+  final String? semanticLabel;
   final double width;
   final double height;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: width,
-      height: height,
-      child: CustomPaint(
-        painter: _MiniTrendPainter(
-          points: points,
-          color: isPositive ? AppColors.primary : AppColors.danger,
+    return Semantics(
+      label: semanticLabel ?? 'Mini price trend chart',
+      image: true,
+      child: SizedBox(
+        width: width,
+        height: height,
+        child: CustomPaint(
+          painter: _MiniTrendPainter(
+            points: points,
+            color: isPositive ? AppColors.primary : AppColors.danger,
+          ),
         ),
       ),
     );
