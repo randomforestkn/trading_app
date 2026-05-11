@@ -58,6 +58,8 @@ class AppConfig {
       'Reports are generated from local paper trading, journal, and options data.';
   static const importRestoreDisclaimer =
       'Restores replace local data on this device. Keep a backup before applying changes.';
+  static const releaseCandidateNote =
+      'Release candidate validation assumes local-first demo mode with no network dependency.';
   static const backupFormatVersion = 1;
   static const demoUserId = 'demo-user';
   static const demoUserEmail = 'demo@cleartrade.local';

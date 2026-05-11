@@ -18,7 +18,11 @@ class LoadingStateView extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null) ...[
-              Icon(icon, color: Colors.white54),
+              Semantics(
+                label: '$message loading indicator',
+                image: true,
+                child: Icon(icon, color: Colors.white54),
+              ),
               const SizedBox(height: AppSpacing.sm),
             ],
             const SizedBox(

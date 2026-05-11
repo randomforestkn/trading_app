@@ -31,10 +31,14 @@ class EmptyStateView extends StatelessWidget {
           AnimatedOpacity(
             duration: AppMotion.short,
             opacity: 1,
-            child: CircleAvatar(
-              radius: 20,
-              backgroundColor: Colors.white10,
-              child: Icon(icon, color: Colors.white70),
+            child: Semantics(
+              label: '$title empty state',
+              image: true,
+              child: CircleAvatar(
+                radius: 20,
+                backgroundColor: Colors.white10,
+                child: Icon(icon, color: Colors.white70),
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.md),

@@ -426,6 +426,16 @@ class _DiagnosticsCard extends StatelessWidget {
             ),
             const Divider(height: 22),
             const _SettingsRow(
+              label: 'RC readiness',
+              value: 'Validated for local-first demo mode',
+            ),
+            const Divider(height: 22),
+            const Text(
+              AppConfig.releaseCandidateNote,
+              style: TextStyle(color: Colors.white60),
+            ),
+            const Divider(height: 22),
+            const _SettingsRow(
               label: 'Backup reminder',
               value: 'Keep a JSON backup before restoring local data.',
             ),

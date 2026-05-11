@@ -29,7 +29,7 @@ void main() {
                   icon: Icons.inbox_outlined,
                 ),
                 const SizedBox(height: 12),
-                const AppInfoBanner(message: 'Banner copy'),
+                const AppInfoBanner(title: 'Banner', message: 'Banner copy'),
                 const SizedBox(height: 12),
                 const AppStatTile(label: 'Label', value: 'Value'),
                 const SizedBox(height: 12),

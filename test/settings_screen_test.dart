@@ -40,6 +40,8 @@ void main() {
     expect(find.text('Export data / reports'), findsOneWidget);
     expect(find.text('Import / restore backup'), findsOneWidget);
     expect(find.text(AppConfig.supportUrlPlaceholder), findsOneWidget);
+    expect(find.text('RC readiness'), findsOneWidget);
+    expect(find.text(AppConfig.releaseCandidateNote), findsOneWidget);
   });
 
   testWidgets('Settings shows signed-in user', (tester) async {

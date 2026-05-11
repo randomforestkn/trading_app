@@ -32,7 +32,11 @@ class AppInfoBanner extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: accent, size: 20),
+          Semantics(
+            label: title == null ? 'Information banner' : '$title banner',
+            image: true,
+            child: Icon(icon, color: accent, size: 20),
+          ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(
