@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../app/theme/app_theme.dart';
@@ -7,6 +9,8 @@ import '../../core/data/market_state.dart';
 import '../../core/data/paper_trading_state.dart';
 import '../../core/journal/journal_entry.dart';
 import '../../core/models/asset.dart';
+import '../../core/options_data/options_chain_models.dart';
+import '../../core/options_data/options_chain_state.dart';
 import '../../core/strategies/option_contract.dart';
 import '../../core/strategies/cash_secured_put_simulator.dart';
 import '../../core/strategies/covered_call_simulator.dart';
@@ -73,11 +77,13 @@ class _StrategySimulatorScreenState extends State<StrategySimulatorScreen> {
     }
     final marketState = MarketScope.of(context);
     final paperState = PaperTradingScope.of(context);
+    final chainState = OptionsChainScope.maybeOf(context);
     _didInit = true;
     _seedForSelection(
       marketState.latestFor(marketState.assets.first),
       marketState,
       paperState,
+      chainState,
     );
   }
 
@@ -89,6 +95,10 @@ class _StrategySimulatorScreenState extends State<StrategySimulatorScreen> {
     final currentPrice = selectedAsset.price;
     final ownedShares = paperState.quantityFor(selectedAsset.symbol);
     final availableCash = paperState.cashBalance;
+    final chainState = OptionsChainScope.maybeOf(context);
+    final remoteChain = chainState?.dataMode == OptionsChainDataMode.remote
+        ? chainState
+        : null;
 
     return AppPage(
       title: 'Strategy simulator',
@@ -107,9 +117,28 @@ class _StrategySimulatorScreenState extends State<StrategySimulatorScreen> {
           assets: marketState.assets,
           selectedAsset: selectedAsset,
           onChanged: (asset) =>
-              _seedForSelection(asset, marketState, paperState),
+              _seedForSelection(asset, marketState, paperState, chainState),
         ),
         const SizedBox(height: 12),
+        if (remoteChain == null) ...[
+          const AppInfoBanner(
+            title: 'Manual options input',
+            message:
+                'Remote options data is not configured. Manual strikes and premiums remain available.',
+            icon: Icons.edit_note_outlined,
+            accentColor: AppTheme.secondary,
+          ),
+          const SizedBox(height: 12),
+        ] else ...[
+          _RemoteChainCard(
+            chainState: remoteChain,
+            symbol: selectedAsset.symbol,
+            onPrefillQuote: (quote) =>
+                _applyQuoteToFields(quote, quote.expirationDate),
+            money: _money,
+          ),
+          const SizedBox(height: 12),
+        ],
         AppCard(
           child: Wrap(
             spacing: 10,
@@ -209,13 +238,19 @@ class _StrategySimulatorScreenState extends State<StrategySimulatorScreen> {
     setState(() => _strategy = strategy);
     final marketState = MarketScope.of(context);
     final paperState = PaperTradingScope.of(context);
-    _seedForSelection(_selectedAsset(marketState), marketState, paperState);
+    _seedForSelection(
+      _selectedAsset(marketState),
+      marketState,
+      paperState,
+      OptionsChainScope.maybeOf(context),
+    );
   }
 
   void _seedForSelection(
     TradingAsset asset,
     MarketState marketState,
     PaperTradingState paperState,
+    OptionsChainState? chainState,
   ) {
     final selected = marketState.latestFor(asset);
     final currentPrice = selected.price;
@@ -251,6 +286,25 @@ class _StrategySimulatorScreenState extends State<StrategySimulatorScreen> {
         _callStrikeController.text = (currentPrice * 1.05).toStringAsFixed(2);
         _callPremiumController.text = (currentPrice * 0.02).toStringAsFixed(2);
       }
+    });
+    if (chainState != null) {
+      unawaited(chainState.setUnderlying(selected.symbol));
+    }
+  }
+
+  void _applyQuoteToFields(OptionQuote quote, DateTime expirationDate) {
+    setState(() {
+      _selectedSymbol = quote.underlyingSymbol;
+      _callStrikeController.text = quote.strike.toStringAsFixed(2);
+      _callPremiumController.text = quote.mid.toStringAsFixed(2);
+      _putStrikeController.text = quote.strike.toStringAsFixed(2);
+      _putPremiumController.text = quote.mid.toStringAsFixed(2);
+      _expiryController.text = expirationDate
+          .toIso8601String()
+          .split('T')
+          .first;
+      _result = null;
+      _errorMessage = null;
     });
   }
 
@@ -900,4 +954,118 @@ double? _parseDouble(String value) {
 int? _parseInt(String value) {
   final parsed = int.tryParse(value.trim());
   return parsed;
+}
+
+class _RemoteChainCard extends StatelessWidget {
+  const _RemoteChainCard({
+    required this.chainState,
+    required this.symbol,
+    required this.onPrefillQuote,
+    required this.money,
+  });
+
+  final OptionsChainState chainState;
+  final String symbol;
+  final ValueChanged<OptionQuote> onPrefillQuote;
+  final String Function(double) money;
+
+  @override
+  Widget build(BuildContext context) {
+    final chain = chainState.chain;
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SectionHeader('Options chain'),
+          Text(
+            '${chainState.config.dataModeLabel} · ${chainState.config.providerLabel}',
+            style: const TextStyle(color: Colors.white60),
+          ),
+          const SizedBox(height: 12),
+          if (chainState.errorMessage != null) ...[
+            AppInfoBanner(
+              title: 'Chain unavailable',
+              message: chainState.errorMessage!,
+              icon: Icons.warning_amber_outlined,
+              accentColor: AppTheme.warning,
+            ),
+            const SizedBox(height: 12),
+          ],
+          DropdownButtonFormField<DateTime>(
+            initialValue: chainState.selectedExpiration,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'Expiration',
+              prefixIcon: Icon(Icons.event_outlined),
+            ),
+            items: chainState.expirations
+                .map(
+                  (expiration) => DropdownMenuItem<DateTime>(
+                    value: expiration,
+                    child: Text(expiration.toIso8601String().split('T').first),
+                  ),
+                )
+                .toList(growable: false),
+            onChanged: (value) => chainState.setExpiration(value),
+          ),
+          if (chain != null && chain.quotes.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: chain.quotes
+                  .take(8)
+                  .map((quote) {
+                    final label =
+                        '${quote.optionType.label} ${quote.strike.toStringAsFixed(0)} · ${quote.mid.toStringAsFixed(2)}';
+                    return ActionChip(
+                      label: Text(label),
+                      onPressed: () => onPrefillQuote(quote),
+                    );
+                  })
+                  .toList(growable: false),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                _quoteTile('Bid', money(chain.quotes.first.bid)),
+                _quoteTile('Ask', money(chain.quotes.first.ask)),
+                _quoteTile('Mid', money(chain.quotes.first.mid)),
+                _quoteTile(
+                  'Open interest',
+                  chain.quotes.first.openInterest.toString(),
+                ),
+                _quoteTile('Volume', chain.quotes.first.volume.toString()),
+                if (chain.quotes.first.impliedVolatility != null)
+                  _quoteTile(
+                    'IV',
+                    '${chain.quotes.first.impliedVolatility!.toStringAsFixed(1)}%',
+                  ),
+              ],
+            ),
+          ] else ...[
+            const Text(
+              'No chain quotes loaded yet.',
+              style: TextStyle(color: Colors.white60),
+            ),
+          ],
+          const SizedBox(height: 8),
+          Text(
+            'Symbol: $symbol',
+            style: const TextStyle(color: Colors.white60),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+Widget _quoteTile(String label, String value) {
+  return SizedBox(
+    width: 160,
+    child: AppStatTile(label: label, value: value),
+  );
 }

@@ -112,3 +112,21 @@ If `USE_REMOTE_SYNC=true` is set without a valid base URL, the app falls back to
 - Remote market data stays optional and should be configured outside source control.
 - Remote sync stays optional and should be configured outside source control.
 - Splash and launcher icon configuration is intentionally placeholder-safe until branded assets are finalized.
+
+## Remote options chain data
+
+Remote options chain data is optional and manual option entry remains the default. Do not commit API keys or provider URLs.
+
+Example remote options run:
+
+```bash
+flutter run \
+  --dart-define=APP_FLAVOR=staging \
+  --dart-define=USE_REMOTE_OPTIONS_DATA=true \
+  --dart-define=OPTIONS_PROVIDER=tradier \
+  --dart-define=OPTIONS_BASE_URL=https://example.com/api \
+  --dart-define=OPTIONS_API_KEY=YOUR_KEY \
+  --dart-define=OPTIONS_MARKET_DATA_DELAYED=true
+```
+
+Providers may return delayed or partial data depending on the plan and endpoint. If the configuration is missing or the provider fails, the app falls back to manual/local option inputs and keeps working offline.

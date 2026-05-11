@@ -448,6 +448,31 @@ class _DiagnosticsCard extends StatelessWidget {
             ),
             const Divider(height: 22),
             _SettingsRow(
+              label: 'Options mode',
+              value: AppConfig.optionsProviderConfig.dataModeLabel,
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Options provider',
+              value: AppConfig.optionsProviderConfig.providerLabel,
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Options config',
+              value: AppConfig.optionsProviderConfig.configPresenceLabel,
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Options summary',
+              value: AppConfig.optionsProviderConfig.safeConfigSummary,
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Quote delay',
+              value: AppConfig.optionsProviderConfig.delayedDataLabel,
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
               label: 'Auth mode',
               value: AppConfig.authProviderConfig.remoteModeLabel,
             ),

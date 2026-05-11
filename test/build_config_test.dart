@@ -6,6 +6,10 @@ import 'package:trading_app/core/data/local_mock_market_repository.dart';
 import 'package:trading_app/core/data/market_repository_factory.dart';
 import 'package:trading_app/core/data/market_provider_config.dart';
 import 'package:trading_app/core/data/remote_market_repository.dart';
+import 'package:trading_app/core/options_data/local_manual_options_repository.dart';
+import 'package:trading_app/core/options_data/options_chain_repository_factory.dart';
+import 'package:trading_app/core/options_data/options_provider_config.dart';
+import 'package:trading_app/core/options_data/remote_options_chain_repository.dart';
 import 'package:trading_app/core/sync/local_sync_repository.dart';
 import 'package:trading_app/core/sync/sync_provider_config.dart';
 import 'package:trading_app/core/sync/sync_repository_factory.dart';
@@ -25,6 +29,9 @@ void main() {
     expect(SyncProviderConfig.current.hasRemoteConfig, isFalse);
     expect(SyncProviderConfig.current.remoteModeLabel, 'Local only');
     expect(SyncProviderConfig.current.remoteConfigPresenceLabel, 'Missing');
+    expect(OptionsProviderConfig.current.provider, OptionsProvider.custom);
+    expect(OptionsProviderConfig.current.hasRemoteConfig, isFalse);
+    expect(OptionsProviderConfig.current.dataModeLabel, 'Manual options input');
   });
 
   test('build config parser handles flavor and labels', () {
@@ -181,6 +188,68 @@ void main() {
       );
 
       expect(repo, isA<RemoteSyncRepository>());
+    },
+  );
+
+  test('options provider config parses values and defaults safely', () {
+    final config = OptionsProviderConfig.fromValues(
+      provider: 'tradier',
+      useRemoteOptionsData: true,
+      baseUrl: 'https://api.tradier.com',
+      apiKey: 'secret',
+      delayedMarketData: true,
+    );
+
+    expect(config.provider, OptionsProvider.tradier);
+    expect(config.useRemoteOptionsData, isTrue);
+    expect(config.hasRemoteConfig, isTrue);
+    expect(config.isRemoteEnabled, isTrue);
+    expect(config.providerLabel, 'Tradier');
+    expect(config.dataModeLabel, 'Remote options data');
+    expect(config.safeConfigSummary, contains('tradier.com'));
+    expect(config.delayedDataLabel, 'Delayed quotes');
+  });
+
+  test('missing options config falls back safely', () {
+    final config = OptionsProviderConfig.fromValues(
+      provider: 'polygon',
+      useRemoteOptionsData: true,
+      baseUrl: '',
+      apiKey: '',
+      delayedMarketData: false,
+    );
+
+    expect(config.hasRemoteConfig, isFalse);
+    expect(config.isRemoteEnabled, isFalse);
+    expect(config.dataModeLabel, 'Manual options input');
+    expect(config.safeConfigSummary, contains('Missing'));
+  });
+
+  test(
+    'options repository factory falls back to manual input without config',
+    () {
+      final repo = OptionsChainRepositoryFactory.build(
+        useRemote: true,
+        baseUrl: '',
+        apiKey: '',
+        delayedMarketData: true,
+      );
+
+      expect(repo, isA<LocalManualOptionsRepository>());
+    },
+  );
+
+  test(
+    'options repository factory uses remote implementation when configured',
+    () {
+      final repo = OptionsChainRepositoryFactory.build(
+        useRemote: true,
+        baseUrl: 'https://api.tradier.com',
+        apiKey: 'secret',
+        delayedMarketData: true,
+      );
+
+      expect(repo, isA<RemoteOptionsChainRepository>());
     },
   );
 }

@@ -21,6 +21,9 @@ import '../core/options_portfolio/local_options_portfolio_repository.dart';
 import '../core/options_portfolio/options_portfolio_repository.dart';
 import '../core/options_portfolio/options_portfolio_state.dart';
 import '../core/options_portfolio/options_portfolio_store.dart';
+import '../core/options_data/options_chain_state.dart';
+import '../core/options_data/options_chain_repository.dart';
+import '../core/options_data/options_chain_repository_factory.dart';
 import '../core/data/paper_trading_state.dart';
 import '../core/data/paper_trading_repository.dart';
 import '../core/data/paper_trading_store.dart';
@@ -53,6 +56,7 @@ class TradingApp extends StatefulWidget {
     this.paperTradingRepository,
     this.journalRepository,
     this.optionsPortfolioRepository,
+    this.optionsChainRepository,
     this.syncRepository,
   });
 
@@ -62,6 +66,7 @@ class TradingApp extends StatefulWidget {
   final PaperTradingRepository? paperTradingRepository;
   final JournalRepository? journalRepository;
   final OptionsPortfolioRepository? optionsPortfolioRepository;
+  final OptionsChainRepository? optionsChainRepository;
   final SyncRepository? syncRepository;
 
   @override
@@ -76,9 +81,11 @@ class _TradingAppState extends State<TradingApp> with WidgetsBindingObserver {
   late final Future<PaperTradingState> _paperTradingStateFuture;
   late final Future<JournalState> _journalStateFuture;
   late final Future<OptionsPortfolioState> _optionsPortfolioStateFuture;
+  late final Future<OptionsChainState> _optionsChainStateFuture;
   PaperTradingState? _paperTradingState;
   JournalState? _journalState;
   OptionsPortfolioState? _optionsPortfolioState;
+  OptionsChainState? _optionsChainState;
   InsightsState? _insightsState;
   late final Future<_TradingStartupBundle> _startupFuture;
 
@@ -129,6 +136,11 @@ class _TradingAppState extends State<TradingApp> with WidgetsBindingObserver {
           ),
       syncState: _syncState,
     );
+    _optionsChainStateFuture = OptionsChainState.load(
+      repository:
+          widget.optionsChainRepository ??
+          OptionsChainRepositoryFactory.buildDefault(),
+    );
     _startupFuture = _restoreStartupState();
   }
 
@@ -142,6 +154,7 @@ class _TradingAppState extends State<TradingApp> with WidgetsBindingObserver {
     _paperTradingState?.dispose();
     _journalState?.dispose();
     _insightsState?.dispose();
+    _optionsChainState?.dispose();
     super.dispose();
   }
 
@@ -155,6 +168,7 @@ class _TradingAppState extends State<TradingApp> with WidgetsBindingObserver {
           _paperTradingState = bundle.paperTradingState;
           _journalState = bundle.journalState;
           _optionsPortfolioState = bundle.optionsPortfolioState;
+          _optionsChainState ??= bundle.optionsChainState;
           _insightsState ??= bundle.insightsState;
           return AnimatedBuilder(
             animation: _onboardingState,
@@ -176,9 +190,12 @@ class _TradingAppState extends State<TradingApp> with WidgetsBindingObserver {
                           state: _journalState!,
                           child: OptionsPortfolioScope(
                             state: _optionsPortfolioState!,
-                            child: InsightsScope(
-                              state: _insightsState!,
-                              child: _buildMaterialApp(home),
+                            child: OptionsChainScope(
+                              state: _optionsChainState!,
+                              child: InsightsScope(
+                                state: _insightsState!,
+                                child: _buildMaterialApp(home),
+                              ),
                             ),
                           ),
                         ),
@@ -215,6 +232,10 @@ class _TradingAppState extends State<TradingApp> with WidgetsBindingObserver {
     _optionsPortfolioState = await _optionsPortfolioStateFuture;
     final paperTradingState = await _paperTradingStateFuture;
     await _marketState.loadAssets();
+    _optionsChainState = await _optionsChainStateFuture;
+    if (_marketState.assets.isNotEmpty) {
+      await _optionsChainState!.setUnderlying(_marketState.assets.first.symbol);
+    }
     await _syncState.refreshMetadata();
     _insightsState = InsightsState(
       journalState: _journalState!,
@@ -227,6 +248,7 @@ class _TradingAppState extends State<TradingApp> with WidgetsBindingObserver {
       paperTradingState: paperTradingState,
       journalState: _journalState!,
       optionsPortfolioState: _optionsPortfolioState!,
+      optionsChainState: _optionsChainState!,
       insightsState: _insightsState!,
     );
   }
@@ -270,6 +292,7 @@ class _TradingStartupBundle {
     required this.paperTradingState,
     required this.journalState,
     required this.optionsPortfolioState,
+    required this.optionsChainState,
     required this.insightsState,
   });
 
@@ -277,6 +300,7 @@ class _TradingStartupBundle {
   final PaperTradingState paperTradingState;
   final JournalState journalState;
   final OptionsPortfolioState optionsPortfolioState;
+  final OptionsChainState optionsChainState;
   final InsightsState insightsState;
 }
 

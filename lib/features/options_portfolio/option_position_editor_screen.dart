@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../app/theme/app_theme.dart';
@@ -5,6 +7,8 @@ import '../../core/data/market_state.dart';
 import '../../core/options_portfolio/option_position.dart';
 import '../../core/options_portfolio/options_portfolio_state.dart';
 import '../../core/models/asset.dart';
+import '../../core/options_data/options_chain_models.dart';
+import '../../core/options_data/options_chain_state.dart';
 import '../../core/strategies/option_contract.dart';
 import '../../core/strategies/option_strategy.dart';
 import '../../core/widgets/app_buttons.dart';
@@ -82,6 +86,7 @@ class _OptionPositionEditorScreenState
     }
     _didSeed = true;
     final marketState = MarketScope.of(context);
+    final chainState = OptionsChainScope.maybeOf(context);
     final initialAsset = widget.prefillUnderlyingSymbol == null
         ? marketState.assets.first
         : marketState.assets.firstWhere(
@@ -110,16 +115,23 @@ class _OptionPositionEditorScreenState
             .toString();
     _expirationController.text = _formatDate(_selectedExpirationDate!);
     _notesController.text = widget.prefillNotes ?? position?.notes ?? '';
+    if (chainState != null) {
+      unawaited(chainState.setUnderlying(selected.symbol));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final optionsState = OptionsPortfolioScope.of(context);
     final marketState = MarketScope.of(context);
+    final chainState = OptionsChainScope.maybeOf(context);
     final selectedAsset = _selectedAsset(marketState);
     final currentPrice = selectedAsset.price;
     final projectedPremium = _parseDouble(_premiumController.text);
     final contracts = _parseInt(_contractsController.text);
+    final remoteChain = chainState?.dataMode == OptionsChainDataMode.remote
+        ? chainState
+        : null;
 
     return AppPage(
       title: widget.initialPosition == null
@@ -142,6 +154,24 @@ class _OptionPositionEditorScreenState
           accentColor: AppTheme.secondary,
         ),
         const SizedBox(height: 12),
+        if (remoteChain == null) ...[
+          const AppInfoBanner(
+            title: 'Manual option entry',
+            message:
+                'Remote options chain data is not configured. Manual strike and premium entry remains available.',
+            icon: Icons.edit_note_outlined,
+            accentColor: AppTheme.secondary,
+          ),
+          const SizedBox(height: 12),
+        ] else ...[
+          _RemoteChainCard(
+            chainState: remoteChain,
+            selectedAsset: selectedAsset,
+            onQuoteSelected: _applyQuoteToFields,
+            money: _money,
+          ),
+          const SizedBox(height: 12),
+        ],
         AppCard(
           child: Wrap(
             spacing: 10,
@@ -177,7 +207,7 @@ class _OptionPositionEditorScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _assetCard(marketState, selectedAsset),
+              _assetCard(marketState, selectedAsset, chainState),
               const SizedBox(height: 12),
               _contractCard(context, currentPrice),
               const SizedBox(height: 12),
@@ -214,7 +244,11 @@ class _OptionPositionEditorScreenState
     );
   }
 
-  Widget _assetCard(MarketState marketState, TradingAsset selectedAsset) {
+  Widget _assetCard(
+    MarketState marketState,
+    TradingAsset selectedAsset,
+    OptionsChainState? chainState,
+  ) {
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -244,6 +278,9 @@ class _OptionPositionEditorScreenState
                 _selectedSymbol = asset.symbol;
                 _strikeController.text = asset.price.toStringAsFixed(2);
               });
+              if (chainState != null) {
+                unawaited(chainState.setUnderlying(asset.symbol));
+              }
             },
           ),
           const SizedBox(height: 12),
@@ -489,6 +526,17 @@ class _OptionPositionEditorScreenState
     Navigator.of(context).pop(true);
   }
 
+  void _applyQuoteToFields(OptionQuote quote) {
+    setState(() {
+      _selectedSymbol = quote.underlyingSymbol;
+      _optionType = quote.optionType;
+      _strikeController.text = quote.strike.toStringAsFixed(2);
+      _premiumController.text = quote.mid.toStringAsFixed(2);
+      _selectedExpirationDate = quote.expirationDate;
+      _expirationController.text = _formatDate(quote.expirationDate);
+    });
+  }
+
   TradingAsset _selectedAsset(MarketState marketState) {
     if (_selectedSymbol != null) {
       return marketState.assetBySymbol(_selectedSymbol!);
@@ -507,4 +555,100 @@ class _OptionPositionEditorScreenState
   }
 
   String _money(double value) => '\$${value.toStringAsFixed(2)}';
+}
+
+class _RemoteChainCard extends StatelessWidget {
+  const _RemoteChainCard({
+    required this.chainState,
+    required this.selectedAsset,
+    required this.onQuoteSelected,
+    required this.money,
+  });
+
+  final OptionsChainState chainState;
+  final TradingAsset selectedAsset;
+  final ValueChanged<OptionQuote> onQuoteSelected;
+  final String Function(double) money;
+
+  @override
+  Widget build(BuildContext context) {
+    final chain = chainState.chain;
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SectionHeader('Options chain'),
+          Text(
+            '${chainState.config.dataModeLabel} · ${chainState.config.providerLabel}',
+            style: const TextStyle(color: Colors.white60),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<DateTime>(
+            initialValue: chainState.selectedExpiration,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'Expiration',
+              prefixIcon: Icon(Icons.event_outlined),
+            ),
+            items: chainState.expirations
+                .map(
+                  (expiration) => DropdownMenuItem<DateTime>(
+                    value: expiration,
+                    child: Text(expiration.toIso8601String().split('T').first),
+                  ),
+                )
+                .toList(growable: false),
+            onChanged: (value) => chainState.setExpiration(value),
+          ),
+          const SizedBox(height: 12),
+          if (chain == null || chain.quotes.isEmpty)
+            const Text(
+              'No chain quotes loaded yet.',
+              style: TextStyle(color: Colors.white60),
+            )
+          else ...[
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: chain.quotes
+                  .take(8)
+                  .map((quote) {
+                    return ActionChip(
+                      label: Text(
+                        '${quote.optionType.label} ${quote.strike.toStringAsFixed(0)} · ${quote.mid.toStringAsFixed(2)}',
+                      ),
+                      onPressed: () => onQuoteSelected(quote),
+                    );
+                  })
+                  .toList(growable: false),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                _quoteTile('Bid', money(chain.quotes.first.bid)),
+                _quoteTile('Ask', money(chain.quotes.first.ask)),
+                _quoteTile('Mid', money(chain.quotes.first.mid)),
+                _quoteTile('OI', chain.quotes.first.openInterest.toString()),
+                _quoteTile('Volume', chain.quotes.first.volume.toString()),
+              ],
+            ),
+          ],
+          const SizedBox(height: 8),
+          Text(
+            'Underlying: ${selectedAsset.symbol}',
+            style: const TextStyle(color: Colors.white60),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+Widget _quoteTile(String label, String value) {
+  return SizedBox(
+    width: 160,
+    child: AppStatTile(label: label, value: value),
+  );
 }
