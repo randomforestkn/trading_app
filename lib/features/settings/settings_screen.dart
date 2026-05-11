@@ -6,6 +6,7 @@ import '../../core/config/build_config.dart';
 import '../../core/data/auth_state.dart';
 import '../../core/data/market_state.dart';
 import '../../core/data/paper_trading_state.dart';
+import '../../core/providers/provider_diagnostics.dart';
 import '../../core/onboarding/onboarding_state.dart';
 import '../../core/sync/sync_state.dart';
 import '../../core/sync/sync_status.dart';
@@ -100,6 +101,10 @@ class SettingsScreen extends StatelessWidget {
         const SectionHeader('Sync'),
         _SyncCard(syncState: SyncScope.of(context)),
         const SectionHeader('Diagnostics'),
+        _BrandingCard(),
+        const SizedBox(height: 10),
+        _ProviderReadinessCard(diagnostics: ProviderDiagnostics.current()),
+        const SizedBox(height: 10),
         _DiagnosticsCard(
           marketState: marketState,
           authState: authState,
@@ -541,6 +546,98 @@ class _DiagnosticsCard extends StatelessWidget {
             const _SettingsRow(
               label: 'Backup reminder',
               value: 'Keep a JSON backup before restoring local data.',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProviderReadinessCard extends StatelessWidget {
+  const _ProviderReadinessCard({required this.diagnostics});
+
+  final ProviderDiagnostics diagnostics;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _SettingsRow(
+              label: 'Provider readiness',
+              value: diagnostics.readinessSummary,
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Market',
+              value:
+                  '${diagnostics.market.providerLabel} · ${diagnostics.market.modeLabel} · ${diagnostics.market.configPresenceLabel}',
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Auth',
+              value:
+                  '${diagnostics.auth.providerLabel} · ${diagnostics.auth.modeLabel} · ${diagnostics.auth.configPresenceLabel}',
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Sync',
+              value:
+                  '${diagnostics.sync.providerLabel} · ${diagnostics.sync.modeLabel} · ${diagnostics.sync.configPresenceLabel}',
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Options',
+              value:
+                  '${diagnostics.options.providerLabel} · ${diagnostics.options.modeLabel} · ${diagnostics.options.configPresenceLabel}',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BrandingCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final buildConfig = AppConfig.buildConfig;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _SettingsRow(label: 'App', value: AppConfig.appName),
+            const Divider(height: 22),
+            _SettingsRow(label: 'Version', value: AppConfig.appVersionLabel),
+            const Divider(height: 22),
+            _SettingsRow(label: 'Build', value: AppConfig.appBuildLabel),
+            const Divider(height: 22),
+            _SettingsRow(label: 'Flavor', value: buildConfig.flavor.label),
+            const Divider(height: 22),
+            const _SettingsRow(
+              label: 'Positioning',
+              value: 'Paper trading and education only',
+            ),
+            const Divider(height: 22),
+            const _SettingsRow(
+              label: 'Paper trading',
+              value: AppConfig.paperTradingDisclaimer,
+            ),
+            const Divider(height: 22),
+            const _SettingsRow(
+              label: 'Release',
+              value: 'Release candidate validated for local-first demo mode.',
+            ),
+            const Divider(height: 22),
+            const _SettingsRow(
+              label: 'Branding assets',
+              value: 'Placeholder assets are documented in assets/branding.',
             ),
           ],
         ),

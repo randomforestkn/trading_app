@@ -23,14 +23,17 @@ void main() {
     expect(find.text('Account'), findsOneWidget);
     expect(find.text('Paper account'), findsOneWidget);
     expect(find.text('App information'), findsOneWidget);
-    expect(find.text(AppConfig.appVersionLabel), findsOneWidget);
+    expect(find.text(AppConfig.appVersionLabel), findsWidgets);
     expect(find.text(AppConfig.buildModeLabel), findsWidgets);
     expect(find.text(AppConfig.buildConfig.buildLabel), findsWidgets);
-    expect(find.text('Flavor'), findsOneWidget);
-    expect(find.text('Test/demo mode'), findsOneWidget);
-    expect(find.text(AppConfig.paperTradingDisclaimer), findsOneWidget);
+    expect(find.text(AppConfig.appName), findsWidgets);
+    expect(find.text(AppConfig.appBuildLabel), findsWidgets);
+    expect(find.text('Flavor'), findsWidgets);
+    expect(find.text('Test/demo mode'), findsWidgets);
+    expect(find.text(AppConfig.paperTradingDisclaimer), findsWidgets);
     expect(find.text(AppConfig.syncDisclaimer), findsOneWidget);
-    expect(find.text('Sync'), findsOneWidget);
+    expect(find.text('Sync'), findsWidgets);
+    expect(find.text('Provider readiness'), findsOneWidget);
     expect(find.text('Sync provider'), findsWidgets);
     expect(find.text(AppConfig.syncProviderConfig.providerLabel), findsWidgets);
     expect(find.text('Sync mode'), findsWidgets);
@@ -60,6 +63,24 @@ void main() {
     expect(find.text(AppConfig.supportUrlPlaceholder), findsOneWidget);
     expect(find.text('RC readiness'), findsOneWidget);
     expect(find.text(AppConfig.releaseCandidateNote), findsOneWidget);
+  });
+
+  testWidgets('Settings branding section renders on compact layout', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(320, 640));
+    addTearDown(() async {
+      await tester.binding.setSurfaceSize(null);
+    });
+
+    await tester.pumpWidget(_settingsHarness(PaperTradingState()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Provider readiness'), findsOneWidget);
+    expect(find.text('Branding assets'), findsOneWidget);
+    expect(find.text(AppConfig.appName), findsWidgets);
+    expect(find.text(AppConfig.paperTradingDisclaimer), findsWidgets);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('Settings shows signed-in user', (tester) async {

@@ -112,6 +112,11 @@ If `USE_REMOTE_SYNC=true` is set without a valid base URL, the app falls back to
 - Remote market data stays optional and should be configured outside source control.
 - Remote sync stays optional and should be configured outside source control.
 - Splash and launcher icon configuration is intentionally placeholder-safe until branded assets are finalized.
+- See [provider integration runbook](provider_integration_runbook.md) for validation steps.
+- See [provider environment examples](provider_env_examples.md) for placeholder Dart define templates.
+- See `scripts/run_provider_validation_demo.sh` and `scripts/run_provider_validation_remote_template.sh` for local validation workflows.
+- See [store listing draft](store_listing.md), [screenshot capture guide](screenshot_capture_guide.md), and [store submission checklist](store_submission_checklist.md) for store packaging.
+- See `assets/branding/README.md` for branding asset requirements and replacement notes.
 
 ## Remote options chain data
 
@@ -130,3 +135,9 @@ flutter run \
 ```
 
 Providers may return delayed or partial data depending on the plan and endpoint. If the configuration is missing or the provider fails, the app falls back to manual/local option inputs and keeps working offline.
+
+## Validation reminder
+
+When validating any provider, use fake or placeholder values only. Never commit
+keys, tokens, or service URLs to source control. The app should always remain
+usable in demo/local-first mode if a provider is missing or fails.
