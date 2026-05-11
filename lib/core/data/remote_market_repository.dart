@@ -1,6 +1,7 @@
 import '../models/asset.dart';
 import 'app_result.dart';
 import 'market_api_client.dart';
+import 'market_api_models.dart';
 import 'market_repository.dart';
 import 'mock_market_data.dart';
 
@@ -15,8 +16,20 @@ class RemoteMarketRepository implements MarketRepository {
 
   @override
   Future<AppResult<List<TradingAsset>>> loadAssets() async {
-    final response = await _apiClient.fetchAssets();
-    return response.when(
+    final fallbackAssets = MockMarketData.assets;
+    final quoteSymbols = fallbackAssets.map((asset) => asset.symbol).toList();
+
+    final quoteResponse = await _apiClient.fetchQuotes(quoteSymbols);
+    final fromQuotes = quoteResponse.when(
+      success: (quotes) => _assetsFromQuotes(quotes, fallbackAssets),
+      failure: (_) => const <TradingAsset>[],
+    );
+    if (fromQuotes.isNotEmpty) {
+      return AppSuccess(fromQuotes);
+    }
+
+    final legacyResponse = await _apiClient.fetchAssets();
+    return legacyResponse.when(
       success: (payloads) {
         final assets = payloads
             .map(_assetFromPayload)
@@ -36,6 +49,44 @@ class RemoteMarketRepository implements MarketRepository {
     List<TradingAsset> currentAssets,
   ) {
     return loadAssets();
+  }
+
+  List<TradingAsset> _assetsFromQuotes(
+    List<MarketQuote> quotes,
+    List<TradingAsset> fallbackAssets,
+  ) {
+    final quotesBySymbol = {for (final quote in quotes) quote.symbol: quote};
+    return fallbackAssets
+        .map((fallback) {
+          final quote = quotesBySymbol[fallback.symbol];
+          return quote == null
+              ? fallback
+              : _assetFromQuote(quote, fallback) ?? fallback;
+        })
+        .toList(growable: false);
+  }
+
+  TradingAsset? _assetFromQuote(MarketQuote quote, TradingAsset? fallback) {
+    final price = quote.price;
+    final type = quote.type ?? fallback?.type;
+    final dailyChangePercent =
+        quote.changePercent ?? fallback?.dailyChangePercent ?? 0;
+
+    return TradingAsset(
+      symbol: quote.symbol,
+      name: quote.name ?? fallback?.name ?? quote.symbol,
+      type: type ?? AssetType.stock,
+      price: price,
+      dailyChangePercent: dailyChangePercent,
+      open: quote.open ?? fallback?.open ?? price,
+      high: quote.high ?? fallback?.high ?? price,
+      low: quote.low ?? fallback?.low ?? price,
+      volume: quote.volume ?? fallback?.volume ?? 'N/A',
+      marketCap: fallback?.marketCap ?? 'N/A',
+      trend: fallback?.trend ?? [price],
+      explanation: fallback?.explanation ?? 'Remote market data instrument.',
+      stats: fallback?.stats ?? const {},
+    );
   }
 
   TradingAsset? _assetFromPayload(Map<String, Object?> payload) {

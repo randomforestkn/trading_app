@@ -2,8 +2,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:trading_app/core/data/app_result.dart';
 import 'package:trading_app/core/data/local_mock_market_repository.dart';
 import 'package:trading_app/core/data/market_api_client.dart';
+import 'package:trading_app/core/data/market_api_models.dart';
 import 'package:trading_app/core/data/market_repository.dart';
 import 'package:trading_app/core/data/market_repository_factory.dart';
+import 'package:trading_app/core/data/mock_market_data.dart';
 import 'package:trading_app/core/data/remote_market_repository.dart';
 
 void main() {
@@ -19,20 +21,20 @@ void main() {
     () async {
       final repository = RemoteMarketRepository(
         apiClient: _FakeMarketApiClient(
-          result: const AppSuccess([
-            {
-              'symbol': 'AAPL',
-              'name': 'Apple Inc.',
-              'type': 'stock',
-              'price': 250.5,
-              'dailyChangePercent': 1.25,
-              'open': 248.0,
-              'high': 251.0,
-              'low': 247.5,
-              'volume': '12M',
-              'marketCap': r'$3.5T',
-              'trend': [248.0, 249.5, 250.5],
-            },
+          quoteResult: const AppSuccess([
+            MarketQuote(
+              symbol: 'AAPL',
+              name: 'Apple Inc.',
+              type: null,
+              price: 250.5,
+              open: 248.0,
+              high: 251.0,
+              low: 247.5,
+              close: 250.5,
+              change: 3.1,
+              changePercent: 1.25,
+              volume: '12M',
+            ),
           ]),
         ),
       );
@@ -41,10 +43,11 @@ void main() {
 
       result.when(
         success: (assets) {
-          expect(assets.single.symbol, 'AAPL');
-          expect(assets.single.price, 250.5);
-          expect(assets.single.type.name, 'stock');
-          expect(assets.single.trend.length, 3);
+          expect(assets, hasLength(MockMarketData.assets.length));
+          expect(assets.first.symbol, 'AAPL');
+          expect(assets.first.price, 250.5);
+          expect(assets.first.type.name, 'stock');
+          expect(assets.first.trend.length, greaterThan(0));
         },
         failure: fail,
       );
@@ -54,7 +57,10 @@ void main() {
   test('Remote repository returns failure on bad or missing config', () async {
     final repository = RemoteMarketRepository(
       apiClient: _FakeMarketApiClient(
-        result: const AppFailure('Remote market data is not configured.'),
+        quoteResult: const AppFailure('Remote market data is not configured.'),
+        fallbackResult: const AppFailure(
+          'Remote market data is not configured.',
+        ),
       ),
     );
 
@@ -69,11 +75,32 @@ void main() {
   });
 }
 
-class _FakeMarketApiClient implements MarketApiClient {
-  const _FakeMarketApiClient({required this.result});
+class _FakeMarketApiClient extends MarketApiClient {
+  _FakeMarketApiClient({this.quoteResult, this.fallbackResult});
 
-  final AppResult<List<Map<String, Object?>>> result;
+  final AppResult<List<MarketQuote>>? quoteResult;
+  final AppResult<List<Map<String, Object?>>>? fallbackResult;
 
   @override
-  Future<AppResult<List<Map<String, Object?>>>> fetchAssets() async => result;
+  Future<AppResult<MarketQuote>> fetchQuote(String symbol) async {
+    final quotes = quoteResult;
+    return quotes == null
+        ? const AppFailure('Quote fetch unavailable')
+        : quotes.when(
+            success: (data) => data.isEmpty
+                ? const AppFailure('No quote data')
+                : AppSuccess(data.first),
+            failure: AppFailure.new,
+          );
+  }
+
+  @override
+  Future<AppResult<List<MarketQuote>>> fetchQuotes(List<String> symbols) async {
+    return quoteResult ?? const AppFailure('Quote fetch unavailable');
+  }
+
+  @override
+  Future<AppResult<List<Map<String, Object?>>>> fetchAssets() async {
+    return fallbackResult ?? const AppFailure('Fallback fetch unavailable');
+  }
 }

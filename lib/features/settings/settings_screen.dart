@@ -385,6 +385,18 @@ class _DiagnosticsCard extends StatelessWidget {
             ),
             const Divider(height: 22),
             _SettingsRow(
+              label: 'Market provider',
+              value: AppConfig.marketProviderConfig.providerLabel,
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Remote config',
+              value: AppConfig.marketProviderConfig.hasRemoteConfig
+                  ? 'Present'
+                  : 'Missing',
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
               label: 'Auth mode',
               value: authState.isAuthenticated
                   ? 'Demo signed in'

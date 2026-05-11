@@ -25,6 +25,7 @@ flutter build apk --release \
 flutter build appbundle --release \
   --dart-define=APP_FLAVOR=staging \
   --dart-define=USE_REMOTE_MARKET_DATA=true \
+  --dart-define=MARKET_API_PROVIDER=twelvedata \
   --dart-define=MARKET_API_BASE_URL=https://example.com/api \
   --dart-define=MARKET_API_KEY=placeholder
 ```
@@ -41,6 +42,32 @@ flutter build ios --release --no-codesign \
 ```bash
 flutter build macos --release \
   --dart-define=APP_FLAVOR=production
+```
+
+## Remote market data
+
+Remote market data is optional and must be enabled with Dart defines. Do not commit API keys or server URLs.
+
+Example Twelve Data run:
+
+```bash
+flutter run \
+  --dart-define=APP_FLAVOR=staging \
+  --dart-define=USE_REMOTE_MARKET_DATA=true \
+  --dart-define=MARKET_API_PROVIDER=twelvedata \
+  --dart-define=MARKET_API_BASE_URL=https://api.twelvedata.com \
+  --dart-define=MARKET_API_KEY=YOUR_KEY
+```
+
+Example Finnhub run:
+
+```bash
+flutter run \
+  --dart-define=APP_FLAVOR=staging \
+  --dart-define=USE_REMOTE_MARKET_DATA=true \
+  --dart-define=MARKET_API_PROVIDER=finnhub \
+  --dart-define=MARKET_API_BASE_URL=https://finnhub.io/api/v1 \
+  --dart-define=MARKET_API_KEY=YOUR_KEY
 ```
 
 ## Notes

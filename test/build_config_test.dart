@@ -3,6 +3,7 @@ import 'package:trading_app/core/config/app_config.dart';
 import 'package:trading_app/core/config/build_config.dart';
 import 'package:trading_app/core/data/local_mock_market_repository.dart';
 import 'package:trading_app/core/data/market_repository_factory.dart';
+import 'package:trading_app/core/data/market_provider_config.dart';
 import 'package:trading_app/core/data/remote_market_repository.dart';
 
 void main() {
@@ -11,6 +12,8 @@ void main() {
     expect(AppConfig.useRemoteMarketData, isFalse);
     expect(BuildConfig.current.flavor, AppFlavor.demo);
     expect(BuildConfig.current.buildLabel.isNotEmpty, isTrue);
+    expect(MarketProviderConfig.current.provider, MarketProvider.twelvedata);
+    expect(MarketProviderConfig.current.hasRemoteConfig, isFalse);
   });
 
   test('build config parser handles flavor and labels', () {
@@ -51,5 +54,33 @@ void main() {
     );
 
     expect(repo, isA<RemoteMarketRepository>());
+  });
+
+  test('market provider config parses values and defaults safely', () {
+    final config = MarketProviderConfig.fromValues(
+      provider: 'finnhub',
+      useRemoteMarketData: true,
+      baseUrl: 'https://finnhub.io/api/v1',
+      apiKey: 'secret',
+    );
+
+    expect(config.provider, MarketProvider.finnhub);
+    expect(config.useRemoteMarketData, isTrue);
+    expect(config.hasRemoteConfig, isTrue);
+    expect(config.providerLabel, 'Finnhub');
+    expect(config.safeConfigSummary, contains('finnhub.io'));
+  });
+
+  test('missing provider config fails safely', () {
+    final config = MarketProviderConfig.fromValues(
+      provider: 'twelvedata',
+      useRemoteMarketData: true,
+      baseUrl: '',
+      apiKey: '',
+    );
+
+    expect(config.hasRemoteConfig, isFalse);
+    expect(config.isRemoteEnabled, isFalse);
+    expect(config.safeConfigSummary, contains('Missing'));
   });
 }

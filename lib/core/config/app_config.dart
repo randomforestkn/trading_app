@@ -1,4 +1,5 @@
 import '../data/market_repository.dart';
+import '../data/market_provider_config.dart';
 import 'build_config.dart';
 
 class AppConfig {
@@ -67,6 +68,8 @@ class AppConfig {
   static const journalStorageKey = 'journal_entries_v1';
   static const optionsPortfolioStorageKey = 'options_portfolio_v1';
   static const onboardingStorageKey = 'onboarding_progress_v1';
+  static MarketProviderConfig get marketProviderConfig =>
+      MarketProviderConfig.current;
 
   static String marketModeLabel(MarketDataMode mode) {
     return switch (mode) {
