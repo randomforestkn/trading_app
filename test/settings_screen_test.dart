@@ -31,6 +31,21 @@ void main() {
     expect(find.text(AppConfig.paperTradingDisclaimer), findsOneWidget);
     expect(find.text(AppConfig.syncDisclaimer), findsOneWidget);
     expect(find.text('Sync'), findsOneWidget);
+    expect(find.text('Sync provider'), findsWidgets);
+    expect(find.text(AppConfig.syncProviderConfig.providerLabel), findsWidgets);
+    expect(find.text('Sync mode'), findsWidgets);
+    expect(
+      find.text(AppConfig.syncProviderConfig.remoteModeLabel),
+      findsWidgets,
+    );
+    expect(find.text('Sync config'), findsWidgets);
+    expect(
+      find.text(AppConfig.syncProviderConfig.remoteConfigPresenceLabel),
+      findsWidgets,
+    );
+    expect(find.text('Sync summary'), findsWidgets);
+    expect(find.textContaining('Missing base URL'), findsWidgets);
+    expect(find.text(AppConfig.syncProviderConfig.namespace), findsWidgets);
     expect(find.text('Sync now'), findsOneWidget);
     expect(find.text('Demo auth'), findsOneWidget);
     expect(find.text('Auth provider'), findsOneWidget);

@@ -1,6 +1,7 @@
 import '../data/market_repository.dart';
 import '../data/market_provider_config.dart';
 import '../data/auth_provider_config.dart';
+import '../sync/sync_provider_config.dart';
 import 'build_config.dart';
 
 class AppConfig {
@@ -73,6 +74,8 @@ class AppConfig {
       MarketProviderConfig.current;
   static AuthProviderConfig get authProviderConfig =>
       AuthProviderConfig.current;
+  static SyncProviderConfig get syncProviderConfig =>
+      SyncProviderConfig.current;
 
   static String marketModeLabel(MarketDataMode mode) {
     return switch (mode) {

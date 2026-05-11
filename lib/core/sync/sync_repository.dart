@@ -4,6 +4,8 @@ import 'sync_result.dart';
 import '../data/app_result.dart';
 
 abstract class SyncRepository {
+  bool get isRemoteSync => false;
+
   Future<AppResult<SyncMetadata>> loadMetadata();
 
   Future<AppResult<void>> saveMetadata(SyncMetadata metadata);

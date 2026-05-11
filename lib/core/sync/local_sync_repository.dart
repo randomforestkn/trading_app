@@ -93,6 +93,9 @@ class LocalSyncRepository implements SyncRepository {
   final bool Function(List<SyncOperation> operations)? syncNowBehavior;
 
   @override
+  bool get isRemoteSync => false;
+
+  @override
   Future<AppResult<SyncMetadata>> loadMetadata() async {
     final savedMetadata = await store?.readMetadata();
     if (savedMetadata == null) {

@@ -221,6 +221,7 @@ class _SyncCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final metadata = syncState.metadata;
+    final providerConfig = AppConfig.syncProviderConfig;
 
     return Card(
       child: Padding(
@@ -228,7 +229,27 @@ class _SyncCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _SettingsRow(label: 'Mode', value: metadata.syncMode.label),
+            _SettingsRow(
+              label: 'Sync mode',
+              value: providerConfig.remoteModeLabel,
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Provider',
+              value: providerConfig.providerLabel,
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Config present',
+              value: providerConfig.remoteConfigPresenceLabel,
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Config summary',
+              value: providerConfig.safeConfigSummary,
+            ),
+            const Divider(height: 22),
+            _SettingsRow(label: 'Namespace', value: providerConfig.namespace),
             const Divider(height: 22),
             _SettingsRow(label: 'Status', value: syncState.status.label),
             const Divider(height: 22),
@@ -354,6 +375,7 @@ class _DiagnosticsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final providerConfig = AppConfig.syncProviderConfig;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -401,6 +423,31 @@ class _DiagnosticsCard extends StatelessWidget {
             ),
             const Divider(height: 22),
             _SettingsRow(
+              label: 'Sync provider',
+              value: providerConfig.providerLabel,
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Sync mode',
+              value: providerConfig.remoteModeLabel,
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Sync config',
+              value: providerConfig.remoteConfigPresenceLabel,
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Sync summary',
+              value: providerConfig.safeConfigSummary,
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Sync namespace',
+              value: providerConfig.namespace,
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
               label: 'Auth mode',
               value: AppConfig.authProviderConfig.remoteModeLabel,
             ),
@@ -423,7 +470,7 @@ class _DiagnosticsCard extends StatelessWidget {
             ),
             const Divider(height: 22),
             _SettingsRow(
-              label: 'Sync mode',
+              label: 'Sync state',
               value: syncState.metadata.syncMode.label,
             ),
             const Divider(height: 22),

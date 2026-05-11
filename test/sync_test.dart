@@ -162,6 +162,28 @@ void main() {
     expect(failureState.errorMessage, isNotNull);
   });
 
+  test(
+    'SyncState returns safe message when remote sync has no user session',
+    () async {
+      final state = SyncState(
+        repository: _RemoteMissingSessionRepository(),
+        currentUserIdProvider: () => null,
+      );
+      await state.refreshMetadata();
+
+      final result = await state.syncNow();
+
+      expect(
+        result.when(
+          success: (data) => data.status,
+          failure: (_) => SyncStatus.synced,
+        ),
+        SyncStatus.failed,
+      );
+      expect(state.errorMessage, contains('Sign in required'));
+    },
+  );
+
   test('local mutations enqueue sync operations but still succeed', () async {
     final failingSyncRepository = _FailingSyncRepository();
     final syncState = SyncState(repository: failingSyncRepository);
@@ -261,6 +283,9 @@ void main() {
 
 class _FailingSyncRepository implements SyncRepository {
   @override
+  bool get isRemoteSync => false;
+
+  @override
   Future<AppResult<SyncMetadata>> loadMetadata() async {
     return AppSuccess(
       SyncMetadata.defaultMetadata(syncMode: SyncMode.mockCloud),
@@ -305,5 +330,57 @@ class _FailingSyncRepository implements SyncRepository {
   @override
   Future<AppResult<SyncResult>> syncNow() async {
     return const AppFailure('Sync unavailable.');
+  }
+}
+
+class _RemoteMissingSessionRepository implements SyncRepository {
+  @override
+  bool get isRemoteSync => true;
+
+  @override
+  Future<AppResult<SyncMetadata>> loadMetadata() async {
+    return AppSuccess(
+      SyncMetadata.defaultMetadata(syncMode: SyncMode.remoteReady),
+    );
+  }
+
+  @override
+  Future<AppResult<void>> saveMetadata(SyncMetadata metadata) async {
+    return const AppSuccess(null);
+  }
+
+  @override
+  Future<AppResult<SyncOperation>> enqueueOperation(
+    SyncOperation operation,
+  ) async {
+    return AppSuccess(operation);
+  }
+
+  @override
+  Future<AppResult<List<SyncOperation>>> pendingOperations() async {
+    return const AppSuccess(<SyncOperation>[]);
+  }
+
+  @override
+  Future<AppResult<void>> markOperationSynced(String operationId) async {
+    return const AppSuccess(null);
+  }
+
+  @override
+  Future<AppResult<void>> markOperationFailed(
+    String operationId, {
+    String? errorMessage,
+  }) async {
+    return const AppSuccess(null);
+  }
+
+  @override
+  Future<AppResult<void>> clearSyncedOperations() async {
+    return const AppSuccess(null);
+  }
+
+  @override
+  Future<AppResult<SyncResult>> syncNow() async {
+    return const AppFailure('Should not be called when session is missing.');
   }
 }

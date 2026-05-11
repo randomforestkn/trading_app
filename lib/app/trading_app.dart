@@ -24,8 +24,8 @@ import '../core/options_portfolio/options_portfolio_store.dart';
 import '../core/data/paper_trading_state.dart';
 import '../core/data/paper_trading_repository.dart';
 import '../core/data/paper_trading_store.dart';
-import '../core/sync/local_sync_repository.dart';
 import '../core/sync/sync_repository.dart';
+import '../core/sync/sync_repository_factory.dart';
 import '../core/sync/sync_state.dart';
 import '../core/utils/app_logger.dart';
 import '../features/activity/activity_screen.dart';
@@ -89,7 +89,10 @@ class _TradingAppState extends State<TradingApp> with WidgetsBindingObserver {
     _syncState = SyncState(
       repository:
           widget.syncRepository ??
-          LocalSyncRepository(store: SharedPreferencesSyncStore()),
+          SyncRepositoryFactory.buildDefault(
+            currentUserIdProvider: () => _authState.currentUser?.id,
+          ),
+      currentUserIdProvider: () => _authState.currentUser?.id,
     );
     _authState = AuthState(
       repository: widget.authRepository ?? AuthRepositoryFactory.buildDefault(),

@@ -9,9 +9,14 @@ import 'sync_result.dart';
 import 'sync_status.dart';
 
 class SyncState extends ChangeNotifier {
-  SyncState({required SyncRepository repository}) : _repository = repository;
+  SyncState({
+    required SyncRepository repository,
+    String? Function()? currentUserIdProvider,
+  }) : _repository = repository,
+       _currentUserIdProvider = currentUserIdProvider;
 
   final SyncRepository _repository;
+  final String? Function()? _currentUserIdProvider;
   SyncMetadata _metadata = SyncMetadata.defaultMetadata();
   List<SyncOperation> _pendingOperations = const [];
   bool _isSyncing = false;
@@ -44,6 +49,8 @@ class SyncState extends ChangeNotifier {
   bool get isSyncing => _isSyncing;
 
   String? get errorMessage => _errorMessage;
+
+  String? get currentUserId => _currentUserIdProvider?.call();
 
   Future<void> refreshMetadata() async {
     var hadFailure = false;
@@ -136,6 +143,49 @@ class SyncState extends ChangeNotifier {
 
   Future<AppResult<SyncResult>> syncNow() async {
     _setSyncing(true);
+    if (_repository.isRemoteSync) {
+      final userId = currentUserId;
+      if (userId == null || userId.trim().isEmpty) {
+        const message = 'Sign in required for cloud sync.';
+        final now = DateTime.now();
+        _errorMessage = message;
+        _metadata = _metadata.copyWith(
+          lastAttemptedAt: now,
+          lastError: message,
+          pendingOperationsCount: _pendingOperations
+              .where(
+                (operation) => operation.status != SyncOperationStatus.synced,
+              )
+              .length,
+          syncMode: SyncMode.remoteReady,
+        );
+        try {
+          final saveResult = await _repository.saveMetadata(_metadata);
+          saveResult.when(
+            success: (_) {},
+            failure: (message) {
+              AppLogger.warn('Sync metadata save failed', error: message);
+            },
+          );
+        } catch (error, stackTrace) {
+          AppLogger.error(
+            'Sync metadata save threw unexpectedly',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        }
+        _setSyncing(false);
+        notifyListeners();
+        return const AppSuccess(
+          SyncResult(
+            status: SyncStatus.failed,
+            syncedCount: 0,
+            failedCount: 0,
+            message: message,
+          ),
+        );
+      }
+    }
     late final AppResult<SyncResult> result;
     try {
       result = await _repository.syncNow();

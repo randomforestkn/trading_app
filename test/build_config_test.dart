@@ -6,6 +6,10 @@ import 'package:trading_app/core/data/local_mock_market_repository.dart';
 import 'package:trading_app/core/data/market_repository_factory.dart';
 import 'package:trading_app/core/data/market_provider_config.dart';
 import 'package:trading_app/core/data/remote_market_repository.dart';
+import 'package:trading_app/core/sync/local_sync_repository.dart';
+import 'package:trading_app/core/sync/sync_provider_config.dart';
+import 'package:trading_app/core/sync/sync_repository_factory.dart';
+import 'package:trading_app/core/sync/remote_sync_repository.dart';
 
 void main() {
   test('default build config is demo/local-first', () {
@@ -17,6 +21,10 @@ void main() {
     expect(MarketProviderConfig.current.hasRemoteConfig, isFalse);
     expect(AuthProviderConfig.current.provider, AuthProvider.supabase);
     expect(AuthProviderConfig.current.hasRemoteConfig, isFalse);
+    expect(SyncProviderConfig.current.provider, SyncProvider.supabase);
+    expect(SyncProviderConfig.current.hasRemoteConfig, isFalse);
+    expect(SyncProviderConfig.current.remoteModeLabel, 'Local only');
+    expect(SyncProviderConfig.current.remoteConfigPresenceLabel, 'Missing');
   });
 
   test('build config parser handles flavor and labels', () {
@@ -116,4 +124,63 @@ void main() {
     expect(config.isRemoteEnabled, isFalse);
     expect(config.safeConfigSummary, contains('Missing'));
   });
+
+  test('sync provider config parses values and defaults safely', () {
+    final config = SyncProviderConfig.fromValues(
+      provider: 'laravel',
+      useRemoteSync: true,
+      baseUrl: 'https://sync.example.com',
+      publicKey: '',
+      namespace: 'cleartrade_demo',
+    );
+
+    expect(config.provider, SyncProvider.laravel);
+    expect(config.useRemoteSync, isTrue);
+    expect(config.hasRemoteConfig, isTrue);
+    expect(config.isRemoteEnabled, isTrue);
+    expect(config.providerLabel, 'Laravel');
+    expect(config.remoteModeLabel, 'Remote ready');
+    expect(config.safeConfigSummary, contains('sync.example.com'));
+    expect(config.publicKeyPresenceLabel, 'Missing');
+  });
+
+  test('missing sync config falls back safely', () {
+    final config = SyncProviderConfig.fromValues(
+      provider: 'supabase',
+      useRemoteSync: true,
+      baseUrl: '',
+      publicKey: '',
+      namespace: 'cleartrade_demo',
+    );
+
+    expect(config.hasRemoteConfig, isFalse);
+    expect(config.isRemoteEnabled, isFalse);
+    expect(config.remoteModeLabel, 'Local only');
+    expect(config.safeConfigSummary, contains('Missing'));
+  });
+
+  test('sync repository factory falls back safely without config', () {
+    final repo = SyncRepositoryFactory.build(
+      useRemote: true,
+      baseUrl: '',
+      publicKey: '',
+      namespace: 'cleartrade_demo',
+    );
+
+    expect(repo, isA<LocalSyncRepository>());
+  });
+
+  test(
+    'sync repository factory uses remote implementation when configured',
+    () {
+      final repo = SyncRepositoryFactory.build(
+        useRemote: true,
+        baseUrl: 'https://sync.example.com',
+        publicKey: '',
+        namespace: 'cleartrade_demo',
+      );
+
+      expect(repo, isA<RemoteSyncRepository>());
+    },
+  );
 }

@@ -86,10 +86,29 @@ flutter run \
   --dart-define=AUTH_REDIRECT_URL=myapp://auth
 ```
 
+## Remote sync
+
+Remote sync is optional and local-first remains the default. Do not commit sync URLs, namespaces, public keys, or tokens.
+
+Example remote sync run:
+
+```bash
+flutter run \
+  --dart-define=APP_FLAVOR=staging \
+  --dart-define=USE_REMOTE_SYNC=true \
+  --dart-define=SYNC_PROVIDER=supabase \
+  --dart-define=SYNC_BASE_URL=https://example.com \
+  --dart-define=SYNC_NAMESPACE=cleartrade_demo \
+  --dart-define=SYNC_PUBLIC_KEY=YOUR_PUBLIC_KEY
+```
+
+If `USE_REMOTE_SYNC=true` is set without a valid base URL, the app falls back to local sync and keeps working offline. The cloud sync boundary is future-ready and does not auto-merge or overwrite local data.
+
 ## Notes
 
 - Demo/local-first remains the default.
 - Do not commit secrets, tokens, or real brokerage credentials.
 - Do not commit auth public keys, client IDs, redirect URLs, or backend endpoints.
 - Remote market data stays optional and should be configured outside source control.
+- Remote sync stays optional and should be configured outside source control.
 - Splash and launcher icon configuration is intentionally placeholder-safe until branded assets are finalized.
