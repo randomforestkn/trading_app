@@ -25,6 +25,9 @@ void main() {
     expect(find.text('App information'), findsOneWidget);
     expect(find.text(AppConfig.appVersionLabel), findsOneWidget);
     expect(find.text(AppConfig.buildModeLabel), findsWidgets);
+    expect(find.text(AppConfig.buildConfig.buildLabel), findsWidgets);
+    expect(find.text('Flavor'), findsOneWidget);
+    expect(find.text('Test/demo mode'), findsOneWidget);
     expect(find.text(AppConfig.paperTradingDisclaimer), findsOneWidget);
     expect(find.text(AppConfig.syncDisclaimer), findsOneWidget);
     expect(find.text('Sync'), findsOneWidget);
@@ -36,7 +39,7 @@ void main() {
     expect(find.text('View onboarding again'), findsOneWidget);
     expect(find.text('Export data / reports'), findsOneWidget);
     expect(find.text('Import / restore backup'), findsOneWidget);
-    expect(find.text(AppConfig.supportContactPlaceholder), findsOneWidget);
+    expect(find.text(AppConfig.supportUrlPlaceholder), findsOneWidget);
   });
 
   testWidgets('Settings shows signed-in user', (tester) async {

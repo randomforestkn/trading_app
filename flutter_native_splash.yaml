@@ -1,0 +1,13 @@
+# Placeholder native splash configuration.
+#
+# The existing project already provides platform splash assets. If you later
+# add flutter_native_splash as a dev dependency, point the logo path at:
+# `assets/branding/splash_logo.png`
+#
+# flutter_native_splash:
+#   color: "#080C10"
+#   color_dark: "#080C10"
+#   image: assets/branding/splash_logo.png
+#   android: true
+#   ios: true
+#   macos: true

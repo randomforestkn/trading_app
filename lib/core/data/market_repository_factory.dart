@@ -1,3 +1,5 @@
+import '../config/build_config.dart';
+import '../utils/app_logger.dart';
 import 'local_mock_market_repository.dart';
 import 'market_api_client.dart';
 import 'market_repository.dart';
@@ -7,16 +9,34 @@ class MarketRepositoryFactory {
   const MarketRepositoryFactory._();
 
   static MarketRepository buildDefault() {
-    const useRemote = bool.fromEnvironment(
-      'USE_REMOTE_MARKET_DATA',
-      defaultValue: false,
+    return build(
+      useRemote: BuildConfig.current.useRemoteMarketData,
+      baseUrl: BuildConfig.current.marketApiBaseUrl,
+      apiKey: BuildConfig.current.marketApiKey,
+      flavor: BuildConfig.current.flavor,
     );
-    const baseUrl = String.fromEnvironment('MARKET_API_BASE_URL');
-    const apiKey = String.fromEnvironment('MARKET_API_KEY');
+  }
 
-    if (useRemote && baseUrl.isNotEmpty && apiKey.isNotEmpty) {
+  static MarketRepository build({
+    required bool useRemote,
+    required String baseUrl,
+    required String apiKey,
+    AppFlavor? flavor,
+  }) {
+    final productionFlavor = flavor == AppFlavor.production;
+    final hasConfig = baseUrl.isNotEmpty && apiKey.isNotEmpty;
+
+    if (useRemote && hasConfig) {
       return RemoteMarketRepository(
         apiClient: HttpMarketApiClient(baseUrl: baseUrl, apiKey: apiKey),
+      );
+    }
+
+    if (useRemote && !hasConfig) {
+      AppLogger.warn(
+        productionFlavor
+            ? 'Production flavor requested remote market data without configuration; falling back to demo mode.'
+            : 'Remote market data requested without configuration; falling back to demo mode.',
       );
     }
 

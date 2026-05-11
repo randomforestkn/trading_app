@@ -1,0 +1,16 @@
+# Placeholder launcher icon configuration.
+#
+# The project already contains native launcher assets under:
+# - android/app/src/main/res/mipmap-*/
+# - ios/Runner/Assets.xcassets/AppIcon.appiconset/
+# - macos/Runner/Assets.xcassets/AppIcon.appiconset/
+#
+# If you later add flutter_launcher_icons as a dev dependency, point
+# `image_path` at a branded PNG in `assets/branding/app_icon.png`.
+#
+# flutter_launcher_icons:
+#   android: true
+#   ios: true
+#   macos: true
+#   image_path: assets/branding/app_icon.png
+#   min_sdk_android: 21

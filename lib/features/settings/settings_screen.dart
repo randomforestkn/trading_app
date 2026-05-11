@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/theme/app_theme.dart';
 import '../../core/config/app_config.dart';
+import '../../core/config/build_config.dart';
 import '../../core/data/auth_state.dart';
 import '../../core/data/market_state.dart';
 import '../../core/data/paper_trading_state.dart';
@@ -361,9 +362,22 @@ class _DiagnosticsCard extends StatelessWidget {
             const Divider(height: 22),
             _SettingsRow(label: 'Build mode', value: AppConfig.buildModeLabel),
             const Divider(height: 22),
-            _SettingsRow(label: 'Build label', value: AppConfig.appBuildLabel),
+            _SettingsRow(
+              label: 'Build label',
+              value: AppConfig.buildConfig.buildLabel,
+            ),
             const Divider(height: 22),
-            const _SettingsRow(label: 'Test/demo mode', value: 'Demo build'),
+            _SettingsRow(
+              label: 'Flavor',
+              value: AppConfig.buildConfig.flavor.label,
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Test/demo mode',
+              value: AppConfig.buildConfig.flavor == AppFlavor.demo
+                  ? 'Demo build'
+                  : 'Flavor-enabled build',
+            ),
             const Divider(height: 22),
             _SettingsRow(
               label: 'Market mode',
@@ -393,7 +407,7 @@ class _DiagnosticsCard extends StatelessWidget {
             const Divider(height: 22),
             const _SettingsRow(
               label: 'Support contact',
-              value: AppConfig.supportContactPlaceholder,
+              value: AppConfig.supportUrlPlaceholder,
             ),
             const Divider(height: 22),
             const _SettingsRow(

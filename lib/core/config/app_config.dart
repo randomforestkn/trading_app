@@ -1,11 +1,20 @@
 import '../data/market_repository.dart';
+import 'build_config.dart';
 
 class AppConfig {
   const AppConfig._();
 
   static const appName = 'ClearTrade';
   static const appVersionLabel = 'MVP Demo';
+  static const appFlavorLabel = String.fromEnvironment(
+    'APP_FLAVOR',
+    defaultValue: 'demo',
+  );
   static const homeSubtitle = 'Paper trading workspace';
+  static const useRemoteMarketData = bool.fromEnvironment(
+    'USE_REMOTE_MARKET_DATA',
+    defaultValue: false,
+  );
 
   static const defaultStartingCash = 18420.55;
   static const maxMarketHistoryLength = 30;
@@ -32,8 +41,14 @@ class AppConfig {
   static const onboardingVersion = 1;
   static const supportContactPlaceholder =
       'support@cleartrade.example (placeholder)';
+  static const supportUrlPlaceholder =
+      'https://example.com/support (placeholder)';
   static const privacyPolicyUrlPlaceholder =
       'https://example.com/privacy (placeholder)';
+  static const appPackageNamePlaceholder = 'com.example.cleartrade';
+  static const androidApplicationIdPlaceholder = 'com.example.cleartrade';
+  static const iosBundleIdPlaceholder = 'com.example.cleartrade';
+  static const macosBundleIdPlaceholder = 'com.example.cleartrade';
   static const syncDisclaimer =
       'Cloud sync is not connected yet. Changes are tracked locally for future backend integration.';
   static const syncDiagnosticsLabel = 'Local-first sync';
@@ -66,4 +81,5 @@ class AppConfig {
       ? 'Profile'
       : 'Debug';
   static String get appBuildLabel => '$appVersionLabel · $buildModeLabel';
+  static BuildConfig get buildConfig => BuildConfig.current;
 }
