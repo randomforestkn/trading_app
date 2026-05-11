@@ -85,6 +85,14 @@ class _ThrowingAuthRepository implements AuthRepository {
   }) {
     throw StateError('auth unavailable');
   }
+
+  @override
+  Future<AppResult<AuthSession>> signUpWithEmailPassword({
+    required String email,
+    required String password,
+  }) {
+    throw StateError('auth unavailable');
+  }
 }
 
 class _ThrowingPaperTradingRepository implements PaperTradingRepository {

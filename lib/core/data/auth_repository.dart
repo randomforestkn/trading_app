@@ -17,4 +17,11 @@ abstract class AuthRepository {
     required String email,
     required String password,
   });
+
+  Future<AppResult<AuthSession>> signUpWithEmailPassword({
+    required String email,
+    required String password,
+  }) async {
+    return const AppFailure('Email/password sign-up is not implemented yet.');
+  }
 }

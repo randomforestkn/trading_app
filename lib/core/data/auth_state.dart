@@ -43,7 +43,7 @@ class AuthState extends ChangeNotifier {
         error: error,
         stackTrace: stackTrace,
       );
-      _errorMessage = 'Unable to restore demo session.';
+      _errorMessage = 'Unable to restore session.';
       _setLoading(false);
       return;
     }
@@ -99,6 +99,30 @@ class AuthState extends ChangeNotifier {
     }
   }
 
+  Future<void> signInWithEmailPassword({
+    required String email,
+    required String password,
+  }) async {
+    await _authenticate(
+      actionLabel: 'Email/password sign-in',
+      request: () =>
+          _repository.signInWithEmailPassword(email: email, password: password),
+      syncOperationType: SyncOperationType.create,
+    );
+  }
+
+  Future<void> signUpWithEmailPassword({
+    required String email,
+    required String password,
+  }) async {
+    await _authenticate(
+      actionLabel: 'Email/password sign-up',
+      request: () =>
+          _repository.signUpWithEmailPassword(email: email, password: password),
+      syncOperationType: SyncOperationType.create,
+    );
+  }
+
   Future<void> signOut() async {
     _setLoading(true);
     late final AppResult<void> result;
@@ -151,9 +175,9 @@ class AuthState extends ChangeNotifier {
         error: error,
         stackTrace: stackTrace,
       );
-      _errorMessage = 'Unable to restore demo session.';
+      _errorMessage = 'Unable to restore session.';
       _setLoading(false);
-      return const AppFailure('Unable to restore demo session.');
+      return const AppFailure('Unable to restore session.');
     }
     result.when(
       success: (_) {
@@ -183,6 +207,48 @@ class AuthState extends ChangeNotifier {
     return _errorMessage == null
         ? const AppSuccess(null)
         : AppFailure(_errorMessage!);
+  }
+
+  Future<void> _authenticate({
+    required String actionLabel,
+    required Future<AppResult<AuthSession>> Function() request,
+    required SyncOperationType syncOperationType,
+  }) async {
+    _setLoading(true);
+    late final AppResult<AuthSession> result;
+    AuthSession? signedInSession;
+    try {
+      result = await request();
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        '$actionLabel threw unexpectedly',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      _errorMessage = 'Unable to complete sign in.';
+      _setLoading(false);
+      return;
+    }
+    result.when(
+      success: (session) {
+        signedInSession = session;
+        _currentSession = session;
+        _currentUser = session.user;
+        _errorMessage = null;
+      },
+      failure: (message) {
+        AppLogger.warn('$actionLabel failed', error: message);
+        _errorMessage = message;
+      },
+    );
+    _setLoading(false);
+    if (_errorMessage == null && signedInSession != null) {
+      await _enqueueSyncOperation(
+        operationType: syncOperationType,
+        entityId: signedInSession!.user.id,
+        payload: authSessionSnapshot(signedInSession),
+      );
+    }
   }
 
   Future<void> _enqueueSyncOperation({

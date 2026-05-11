@@ -1,5 +1,6 @@
 import '../data/market_repository.dart';
 import '../data/market_provider_config.dart';
+import '../data/auth_provider_config.dart';
 import 'build_config.dart';
 
 class AppConfig {
@@ -70,6 +71,8 @@ class AppConfig {
   static const onboardingStorageKey = 'onboarding_progress_v1';
   static MarketProviderConfig get marketProviderConfig =>
       MarketProviderConfig.current;
+  static AuthProviderConfig get authProviderConfig =>
+      AuthProviderConfig.current;
 
   static String marketModeLabel(MarketDataMode mode) {
     return switch (mode) {

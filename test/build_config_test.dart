@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trading_app/core/config/app_config.dart';
 import 'package:trading_app/core/config/build_config.dart';
+import 'package:trading_app/core/data/auth_provider_config.dart';
 import 'package:trading_app/core/data/local_mock_market_repository.dart';
 import 'package:trading_app/core/data/market_repository_factory.dart';
 import 'package:trading_app/core/data/market_provider_config.dart';
@@ -14,6 +15,8 @@ void main() {
     expect(BuildConfig.current.buildLabel.isNotEmpty, isTrue);
     expect(MarketProviderConfig.current.provider, MarketProvider.twelvedata);
     expect(MarketProviderConfig.current.hasRemoteConfig, isFalse);
+    expect(AuthProviderConfig.current.provider, AuthProvider.supabase);
+    expect(AuthProviderConfig.current.hasRemoteConfig, isFalse);
   });
 
   test('build config parser handles flavor and labels', () {
@@ -77,6 +80,36 @@ void main() {
       useRemoteMarketData: true,
       baseUrl: '',
       apiKey: '',
+    );
+
+    expect(config.hasRemoteConfig, isFalse);
+    expect(config.isRemoteEnabled, isFalse);
+    expect(config.safeConfigSummary, contains('Missing'));
+  });
+
+  test('auth provider config parses values and defaults safely', () {
+    final config = AuthProviderConfig.fromValues(
+      provider: 'firebase',
+      useRemoteAuth: true,
+      baseUrl: 'https://identitytoolkit.googleapis.com/v1',
+      publicKey: 'public-key',
+      redirectUrl: 'myapp://auth',
+    );
+
+    expect(config.provider, AuthProvider.firebase);
+    expect(config.useRemoteAuth, isTrue);
+    expect(config.hasRemoteConfig, isTrue);
+    expect(config.providerLabel, 'Firebase');
+    expect(config.safeConfigSummary, contains('googleapis.com'));
+  });
+
+  test('missing auth config falls back safely', () {
+    final config = AuthProviderConfig.fromValues(
+      provider: 'supabase',
+      useRemoteAuth: true,
+      baseUrl: '',
+      publicKey: '',
+      redirectUrl: '',
     );
 
     expect(config.hasRemoteConfig, isFalse);

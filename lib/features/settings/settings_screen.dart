@@ -32,6 +32,10 @@ class SettingsScreen extends StatelessWidget {
       children: [
         const SectionHeader('Account'),
         _AccountCard(authState: authState),
+        if (AppConfig.authProviderConfig.isRemoteEnabled) ...[
+          const SizedBox(height: 10),
+          _RemoteAuthCard(authState: authState),
+        ],
         const SectionHeader('Paper account'),
         _PaperAccountCard(paperState: paperState, marketState: marketState),
         const SectionHeader('Account controls'),
@@ -398,9 +402,24 @@ class _DiagnosticsCard extends StatelessWidget {
             const Divider(height: 22),
             _SettingsRow(
               label: 'Auth mode',
-              value: authState.isAuthenticated
-                  ? 'Demo signed in'
-                  : 'Signed out',
+              value: AppConfig.authProviderConfig.remoteModeLabel,
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Auth provider',
+              value: AppConfig.authProviderConfig.providerLabel,
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Auth config',
+              value: AppConfig.authProviderConfig.hasRemoteConfig
+                  ? 'Present'
+                  : 'Missing',
+            ),
+            const Divider(height: 22),
+            _SettingsRow(
+              label: 'Auth state',
+              value: authState.isAuthenticated ? 'Signed in' : 'Signed out',
             ),
             const Divider(height: 22),
             _SettingsRow(
@@ -575,6 +594,147 @@ class _AccountCard extends StatelessWidget {
     }
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Signed out of demo account.')),
+    );
+  }
+}
+
+class _RemoteAuthCard extends StatefulWidget {
+  const _RemoteAuthCard({required this.authState});
+
+  final AuthState authState;
+
+  @override
+  State<_RemoteAuthCard> createState() => _RemoteAuthCardState();
+}
+
+class _RemoteAuthCardState extends State<_RemoteAuthCard> {
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final config = AppConfig.authProviderConfig;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              config.remoteModeLabel,
+              style: const TextStyle(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '${config.providerLabel} · ${config.safeConfigSummary}',
+              style: const TextStyle(color: Colors.white60),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _emailController,
+              enabled: !widget.authState.isLoading,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(
+                labelText: 'Email',
+                hintText: 'user@example.com',
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _passwordController,
+              enabled: !widget.authState.isLoading,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Password',
+                hintText: 'Enter password',
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton(
+                    onPressed: widget.authState.isLoading
+                        ? null
+                        : () => _signIn(context),
+                    child: const Text('Sign in'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: widget.authState.isLoading
+                        ? null
+                        : () => _signUp(context),
+                    child: const Text('Sign up'),
+                  ),
+                ),
+              ],
+            ),
+            if (widget.authState.errorMessage != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                widget.authState.errorMessage!,
+                style: const TextStyle(
+                  color: AppTheme.danger,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+            const SizedBox(height: 8),
+            const Text(
+              'Remote identity is optional. Demo auth and paper trading remain available.',
+              style: TextStyle(color: Colors.white60),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _signIn(BuildContext context) async {
+    await widget.authState.signInWithEmailPassword(
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
+    );
+    if (!context.mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          widget.authState.isAuthenticated
+              ? 'Remote auth signed in.'
+              : widget.authState.errorMessage ?? 'Sign in complete.',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _signUp(BuildContext context) async {
+    await widget.authState.signUpWithEmailPassword(
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
+    );
+    if (!context.mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          widget.authState.isAuthenticated
+              ? 'Remote auth account created.'
+              : widget.authState.errorMessage ?? 'Sign up complete.',
+        ),
+      ),
     );
   }
 }

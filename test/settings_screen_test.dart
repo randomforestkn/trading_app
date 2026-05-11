@@ -32,6 +32,9 @@ void main() {
     expect(find.text(AppConfig.syncDisclaimer), findsOneWidget);
     expect(find.text('Sync'), findsOneWidget);
     expect(find.text('Sync now'), findsOneWidget);
+    expect(find.text('Demo auth'), findsOneWidget);
+    expect(find.text('Auth provider'), findsOneWidget);
+    expect(find.text('Auth config'), findsOneWidget);
     expect(find.text('Local only'), findsWidgets);
     expect(find.text('Legal'), findsOneWidget);
     expect(find.text('Disclaimer'), findsWidgets);

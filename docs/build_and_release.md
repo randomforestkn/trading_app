@@ -70,9 +70,26 @@ flutter run \
   --dart-define=MARKET_API_KEY=YOUR_KEY
 ```
 
+## Remote auth
+
+Remote auth is also optional and uses the same local-first fallback behavior. Do not commit auth URLs, public keys, or tokens.
+
+Example remote auth run:
+
+```bash
+flutter run \
+  --dart-define=APP_FLAVOR=staging \
+  --dart-define=USE_REMOTE_AUTH=true \
+  --dart-define=AUTH_PROVIDER=supabase \
+  --dart-define=AUTH_BASE_URL=https://example.com \
+  --dart-define=AUTH_PUBLIC_KEY=YOUR_PUBLIC_KEY \
+  --dart-define=AUTH_REDIRECT_URL=myapp://auth
+```
+
 ## Notes
 
 - Demo/local-first remains the default.
 - Do not commit secrets, tokens, or real brokerage credentials.
+- Do not commit auth public keys, client IDs, redirect URLs, or backend endpoints.
 - Remote market data stays optional and should be configured outside source control.
 - Splash and launcher icon configuration is intentionally placeholder-safe until branded assets are finalized.

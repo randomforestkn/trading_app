@@ -81,4 +81,12 @@ class LocalDemoAuthRepository implements AuthRepository {
   }) async {
     return const AppFailure('Email/password sign-in is not implemented yet.');
   }
+
+  @override
+  Future<AppResult<AuthSession>> signUpWithEmailPassword({
+    required String email,
+    required String password,
+  }) async {
+    return const AppFailure('Email/password sign-up is not implemented yet.');
+  }
 }

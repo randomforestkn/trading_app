@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../core/config/app_config.dart';
 import '../core/data/auth_repository.dart';
+import '../core/data/auth_repository_factory.dart';
 import '../core/data/auth_state.dart';
-import '../core/data/auth_store.dart';
-import '../core/data/local_demo_auth_repository.dart';
 import '../core/data/local_paper_trading_repository.dart';
 import '../core/data/market_repository.dart';
 import '../core/data/market_repository_factory.dart';
@@ -93,9 +92,7 @@ class _TradingAppState extends State<TradingApp> with WidgetsBindingObserver {
           LocalSyncRepository(store: SharedPreferencesSyncStore()),
     );
     _authState = AuthState(
-      repository:
-          widget.authRepository ??
-          LocalDemoAuthRepository(store: SharedPreferencesAuthStore()),
+      repository: widget.authRepository ?? AuthRepositoryFactory.buildDefault(),
       syncState: _syncState,
     );
     _onboardingState = OnboardingState(
