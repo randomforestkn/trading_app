@@ -76,7 +76,7 @@ class MarketProviderConfig {
 
   bool get isRemoteEnabled => useRemoteMarketData && hasRemoteConfig;
 
-  bool get supportsBatchQuotes => provider == MarketProvider.twelvedata;
+  bool get supportsBatchQuotes => false;
 
   bool get supportsHistoricalCandles => true;
 

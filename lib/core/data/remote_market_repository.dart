@@ -1,4 +1,5 @@
 import '../models/asset.dart';
+import '../utils/app_logger.dart';
 import 'app_result.dart';
 import 'market_api_client.dart';
 import 'market_api_models.dart';
@@ -16,69 +17,101 @@ class RemoteMarketRepository implements MarketRepository {
 
   @override
   Future<AppResult<List<TradingAsset>>> loadAssets() async {
-    final fallbackAssets = MockMarketData.assets;
-    final quoteSymbols = fallbackAssets.map((asset) => asset.symbol).toList();
-
-    final quoteResponse = await _apiClient.fetchQuotes(quoteSymbols);
-    final fromQuotes = quoteResponse.when(
-      success: (quotes) => _assetsFromQuotes(quotes, fallbackAssets),
-      failure: (_) => const <TradingAsset>[],
-    );
-    if (fromQuotes.isNotEmpty) {
-      return AppSuccess(fromQuotes);
-    }
-
-    final legacyResponse = await _apiClient.fetchAssets();
-    return legacyResponse.when(
-      success: (payloads) {
-        final assets = payloads
-            .map(_assetFromPayload)
-            .whereType<TradingAsset>()
-            .toList(growable: false);
-        if (assets.isEmpty) {
-          return const AppFailure('Remote market data response was empty.');
-        }
-        return AppSuccess(assets);
-      },
-      failure: AppFailure.new,
-    );
+    return fetchAssets();
   }
 
   @override
   Future<AppResult<List<TradingAsset>>> refreshPrices(
     List<TradingAsset> currentAssets,
   ) {
-    return loadAssets();
+    final assets = currentAssets.isEmpty
+        ? MockMarketData.assets
+        : currentAssets;
+    return _fetchRemoteAssets(assets);
   }
 
-  List<TradingAsset> _assetsFromQuotes(
-    List<MarketQuote> quotes,
+  Future<AppResult<List<TradingAsset>>> fetchAssets() {
+    return _fetchRemoteAssets(MockMarketData.assets);
+  }
+
+  Future<AppResult<List<TradingAsset>>> _fetchRemoteAssets(
     List<TradingAsset> fallbackAssets,
-  ) {
-    final quotesBySymbol = {for (final quote in quotes) quote.symbol: quote};
-    return fallbackAssets
-        .map((fallback) {
-          final quote = quotesBySymbol[fallback.symbol];
-          return quote == null
-              ? fallback
-              : _assetFromQuote(quote, fallback) ?? fallback;
-        })
-        .toList(growable: false);
+  ) async {
+    if (fallbackAssets.isEmpty) {
+      return const AppFailure('Remote market data universe is empty.');
+    }
+
+    final mergedAssets = <TradingAsset>[];
+    var supportedSymbolCount = 0;
+    var successCount = 0;
+
+    for (final fallback in fallbackAssets) {
+      final remoteSymbol = _remoteSymbolForAsset(fallback);
+      if (remoteSymbol == null) {
+        mergedAssets.add(fallback);
+        continue;
+      }
+
+      supportedSymbolCount++;
+      final response = await _apiClient.fetchQuote(remoteSymbol);
+      final asset = response.when(
+        success: (quote) {
+          successCount++;
+          return _assetFromQuote(
+                quote,
+                fallback,
+                localSymbol: fallback.symbol,
+              ) ??
+              fallback;
+        },
+        failure: (message) {
+          AppLogger.warn(
+            'Remote market quote fetch failed for ${fallback.symbol}',
+            error: message,
+          );
+          return fallback;
+        },
+      );
+      mergedAssets.add(asset);
+    }
+
+    if (supportedSymbolCount == 0) {
+      AppLogger.warn(
+        'Remote market provider did not support any configured mock symbols.',
+      );
+      return AppSuccess(mergedAssets);
+    }
+
+    if (successCount == 0) {
+      AppLogger.warn('Remote market quote refresh failed for all symbols.');
+      return const AppFailure('Remote market data refresh failed.');
+    }
+
+    return AppSuccess(mergedAssets);
   }
 
-  TradingAsset? _assetFromQuote(MarketQuote quote, TradingAsset? fallback) {
+  TradingAsset? _assetFromQuote(
+    MarketQuote quote,
+    TradingAsset? fallback, {
+    required String localSymbol,
+  }) {
     final price = quote.price;
     final type = quote.type ?? fallback?.type;
+    final previousPrice = fallback?.price;
+    final change = quote.change ?? _derivedChange(price, previousPrice);
     final dailyChangePercent =
-        quote.changePercent ?? fallback?.dailyChangePercent ?? 0;
+        quote.changePercent ??
+        _derivedChangePercent(change, previousPrice) ??
+        fallback?.dailyChangePercent ??
+        0;
 
     return TradingAsset(
-      symbol: quote.symbol,
-      name: quote.name ?? fallback?.name ?? quote.symbol,
+      symbol: localSymbol,
+      name: quote.name ?? fallback?.name ?? localSymbol,
       type: type ?? AssetType.stock,
       price: price,
       dailyChangePercent: dailyChangePercent,
-      open: quote.open ?? fallback?.open ?? price,
+      open: quote.open ?? fallback?.open ?? previousPrice ?? price,
       high: quote.high ?? fallback?.high ?? price,
       low: quote.low ?? fallback?.low ?? price,
       volume: quote.volume ?? fallback?.volume ?? 'N/A',
@@ -89,86 +122,35 @@ class RemoteMarketRepository implements MarketRepository {
     );
   }
 
-  TradingAsset? _assetFromPayload(Map<String, Object?> payload) {
-    final symbol = payload['symbol'] as String?;
-    final price = _doubleValue(payload['price']);
-    if (symbol == null || symbol.trim().isEmpty || price == null) {
+  String? _remoteSymbolForAsset(TradingAsset asset) {
+    switch (asset.type) {
+      case AssetType.stock:
+      case AssetType.etf:
+        return asset.symbol;
+      case AssetType.crypto:
+        final normalized = asset.symbol.toUpperCase();
+        if (normalized.contains('/')) {
+          return normalized;
+        }
+        return '$normalized/USD';
+      case AssetType.cfd:
+      case AssetType.option:
+      case AssetType.bond:
+        return null;
+    }
+  }
+
+  double? _derivedChange(double price, double? previousPrice) {
+    if (previousPrice == null) {
       return null;
     }
-
-    final fallback = _fallbackAsset(symbol);
-    final type = _assetTypeFromValue(payload['type']) ?? fallback?.type;
-    final dailyChangePercent =
-        _doubleValue(payload['dailyChangePercent']) ??
-        _doubleValue(payload['changePercent']) ??
-        fallback?.dailyChangePercent ??
-        0;
-
-    return TradingAsset(
-      symbol: symbol,
-      name: (payload['name'] as String?) ?? fallback?.name ?? symbol,
-      type: type ?? AssetType.stock,
-      price: price,
-      dailyChangePercent: dailyChangePercent,
-      open: _doubleValue(payload['open']) ?? fallback?.open ?? price,
-      high: _doubleValue(payload['high']) ?? fallback?.high ?? price,
-      low: _doubleValue(payload['low']) ?? fallback?.low ?? price,
-      volume: _stringValue(payload['volume']) ?? fallback?.volume ?? 'N/A',
-      marketCap:
-          _stringValue(payload['marketCap']) ?? fallback?.marketCap ?? 'N/A',
-      trend: _trendFromPayload(payload['trend']) ?? fallback?.trend ?? [price],
-      explanation:
-          (payload['explanation'] as String?) ??
-          fallback?.explanation ??
-          'Remote market data instrument.',
-      stats: fallback?.stats ?? const {},
-    );
+    return price - previousPrice;
   }
 
-  TradingAsset? _fallbackAsset(String symbol) {
-    for (final asset in MockMarketData.assets) {
-      if (asset.symbol == symbol) {
-        return asset;
-      }
-    }
-    return null;
-  }
-
-  AssetType? _assetTypeFromValue(Object? value) {
-    final normalized = value?.toString().toLowerCase();
-    return switch (normalized) {
-      'stock' || 'stocks' => AssetType.stock,
-      'etf' || 'etfs' => AssetType.etf,
-      'cfd' || 'cfds' => AssetType.cfd,
-      'option' || 'options' => AssetType.option,
-      'crypto' || 'cryptocurrency' => AssetType.crypto,
-      'bond' || 'bonds' => AssetType.bond,
-      _ => null,
-    };
-  }
-
-  double? _doubleValue(Object? value) {
-    if (value is num) {
-      return value.toDouble();
-    }
-    if (value is String) {
-      return double.tryParse(value);
-    }
-    return null;
-  }
-
-  String? _stringValue(Object? value) {
-    if (value == null) {
+  double? _derivedChangePercent(double? change, double? previousPrice) {
+    if (change == null || previousPrice == null || previousPrice == 0) {
       return null;
     }
-    return value.toString();
-  }
-
-  List<double>? _trendFromPayload(Object? value) {
-    if (value is! List) {
-      return null;
-    }
-    final points = value.map(_doubleValue).whereType<double>().toList();
-    return points.isEmpty ? null : points;
+    return (change / previousPrice) * 100;
   }
 }

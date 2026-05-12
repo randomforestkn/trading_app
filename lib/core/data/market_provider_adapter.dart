@@ -55,16 +55,16 @@ class TwelveDataMarketProviderAdapter implements MarketProviderAdapter {
   String get providerName => 'twelvedata';
 
   @override
-  bool get supportsBatchQuotes => true;
+  bool get supportsBatchQuotes => false;
 
   @override
   bool get supportsHistoricalCandles => true;
 
   @override
-  String get quotePath => '/quote';
+  String get quotePath => '/price';
 
   @override
-  String get batchQuotePath => '/quote';
+  String get batchQuotePath => '/price';
 
   @override
   String get historicalCandlesPath => '/time_series';

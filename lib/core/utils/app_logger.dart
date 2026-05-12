@@ -7,12 +7,12 @@ class AppLogger {
     if (!kDebugMode) {
       return;
     }
-    debugPrint('[WARN] $message');
+    debugPrint('[WARN] ${sanitizeText(message)}');
     if (error != null) {
-      debugPrint('  error: $error');
+      debugPrint('  error: ${sanitizeText(error.toString())}');
     }
     if (stackTrace != null) {
-      debugPrintStack(stackTrace: stackTrace);
+      debugPrintStack(stackTrace: stackTrace, maxFrames: 8);
     }
   }
 
@@ -20,12 +20,31 @@ class AppLogger {
     if (!kDebugMode) {
       return;
     }
-    debugPrint('[ERROR] $message');
+    debugPrint('[ERROR] ${sanitizeText(message)}');
     if (error != null) {
-      debugPrint('  error: $error');
+      debugPrint('  error: ${sanitizeText(error.toString())}');
     }
     if (stackTrace != null) {
-      debugPrintStack(stackTrace: stackTrace);
+      debugPrintStack(stackTrace: stackTrace, maxFrames: 8);
     }
+  }
+
+  static String sanitizeText(String input) {
+    var sanitized = input;
+    final patterns = <RegExp>[
+      RegExp(
+        r'(apikey|api_key|token|access_token|key)=([^&\s]+)',
+        caseSensitive: false,
+      ),
+      RegExp(r'(authorization:\s*)([^,\s]+)', caseSensitive: false),
+    ];
+    for (final pattern in patterns) {
+      sanitized = sanitized.replaceAllMapped(pattern, (match) {
+        final prefix = match.group(1) ?? '';
+        final separator = prefix.contains(':') ? ' ' : '=';
+        return '$prefix${separator}REDACTED';
+      });
+    }
+    return sanitized;
   }
 }
